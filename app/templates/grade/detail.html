@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block title %}Grade #{{ grade.id }} · ClassCulator{% endblock %}
+
+{% block content %}
+  <h1 class="title">
+    Grade v{{ grade.versao }} — {{ grade.semestre }}
+    <span class="tag is-large is-{% if grade.status.value == 'done' %}success{% elif grade.status.value == 'failed' %}danger{% elif grade.status.value == 'running' %}info{% else %}light{% endif %}">
+      {{ grade.status.value }}
+    </span>
+  </h1>
+
+  <div class="level">
+    <div class="level-item has-text-centered">
+      <div>
+        <p class="heading">Solver</p>
+        <p class="title is-5"><code>{{ grade.solver_usado or '?' }}</code></p>
+      </div>
+    </div>
+    <div class="level-item has-text-centered">
+      <div>
+        <p class="heading">Score (penalidade)</p>
+        <p class="title is-5">
+          {{ "%.0f"|format(grade.score_penalidade) if grade.score_penalidade is not none else '—' }}
+        </p>
+      </div>
+    </div>
+    <div class="level-item has-text-centered">
+      <div>
+        <p class="heading">Tempo</p>
+        <p class="title is-5">
+          {{ "%.2f"|format(grade.tempo_segundos) if grade.tempo_segundos is not none else '—' }}s
+        </p>
+      </div>
+    </div>
+    {% if breakdown %}
+      <div class="level-item has-text-centered">
+        <div>
+          <p class="heading">SC1 / SC2 / SC3 / SC4</p>
+          <p class="title is-5">
+            {{ breakdown.SC1 }} / {{ breakdown.SC2 }} / {{ breakdown.SC3 }} / {{ breakdown.get('SC4', 0) }}
+          </p>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+
+  {% if grade.status.value == 'failed' %}
+    <article class="message is-danger">
+      <div class="message-header"><p>Falha na geração</p></div>
+      <div class="message-body"><pre>{{ grade.log or "Sem detalhes" }}</pre></div>
+    </article>
+  {% endif %}
+
+  {% for tid, turma in turmas.items() %}
+    <h2 class="title is-4 mt-5">Turma {{ turma.identificador }}</h2>
+    <table class="table is-bordered is-fullwidth has-text-centered grade-table">
+      <thead>
+        <tr>
+          <th></th>
+          {% for slot in SLOTS %}
+            <th>{{ SLOT_LABELS[slot] }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for dia in DIAS %}
+          <tr>
+            <th class="has-background-light">{{ DIAS_LABELS[dia] }}</th>
+            {% for slot in SLOTS %}
+              {% set cell = grades_por_turma[tid][dia][slot] %}
+              <td class="grade-cell" data-area="{{ cell.disciplina.area if cell else '' }}">
+                {% if cell %}
+                  <strong>{{ cell.disciplina.nome }}</strong><br />
+                  <small>{{ cell.professor.nome }}</small>
+                  {% if cell.sala %}<br /><small class="has-text-grey">{{ cell.sala.nome }}</small>{% endif %}
+                {% else %}
+                  <span class="has-text-grey-light">—</span>
+                {% endif %}
+              </td>
+            {% endfor %}
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endfor %}
+
+  {% if grade.log %}
+    <details class="mt-5">
+      <summary><strong>Log do solver</strong></summary>
+      <pre class="mt-2">{{ grade.log }}</pre>
+    </details>
+  {% endif %}
+{% endblock %}
+
+{% block scripts %}
+  <script src="/static/js/grade-detail.js" defer></script>
+{% endblock %}

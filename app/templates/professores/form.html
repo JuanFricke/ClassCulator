@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block title %}{{ professor.nome if professor else "Novo professor" }} · ClassCulator{% endblock %}
+
+{% block content %}
+  <h1 class="title">{{ professor.nome if professor else "Novo professor" }}</h1>
+
+  <form
+    id="professor-form"
+    data-id="{{ professor.id if professor else '' }}"
+    class="box"
+  >
+    <div class="field">
+      <label class="label">Nome</label>
+      <div class="control">
+        <input
+          class="input"
+          name="nome"
+          required
+          maxlength="120"
+          value="{{ professor.nome if professor else '' }}"
+        />
+      </div>
+    </div>
+    <div class="field">
+      <label class="label">E-mail</label>
+      <div class="control">
+        <input
+          class="input"
+          name="email"
+          maxlength="120"
+          value="{{ professor.email if professor and professor.email else '' }}"
+        />
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="label">Disciplinas que leciona</label>
+      <div class="control">
+        <div class="tags">
+          {% for d in disciplinas %}
+            <label class="checkbox mr-3">
+              <input
+                type="checkbox"
+                name="disciplina_ids"
+                value="{{ d.id }}"
+                {% if d.id in disciplina_ids %}checked{% endif %}
+              />
+              {{ d.nome }}
+            </label>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="field is-grouped">
+      <div class="control">
+        <button class="button is-link" type="submit">Salvar</button>
+      </div>
+      <div class="control">
+        <a class="button" href="/professores">Voltar</a>
+      </div>
+    </div>
+    <div class="notification is-hidden" id="professor-feedback"></div>
+  </form>
+
+  {% if professor %}
+    <h2 class="title is-4 mt-5">Disponibilidade semanal</h2>
+    <p class="subtitle is-6">Desmarque os horários em que o professor <strong>não pode</strong> dar aula.</p>
+
+    <form id="disponibilidade-form" data-prof-id="{{ professor.id }}" class="box">
+      <table class="table is-bordered is-narrow has-text-centered" style="width: auto;">
+        <thead>
+          <tr>
+            <th></th>
+            {% for slot in SLOTS %}
+              <th>{{ SLOT_LABELS[slot] }}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for dia in DIAS %}
+            <tr>
+              <th>{{ DIAS_LABELS[dia] }}</th>
+              {% for slot in SLOTS %}
+                {% set disp = disponibilidade.get((dia, slot), True) %}
+                <td>
+                  <input
+                    type="checkbox"
+                    data-dia="{{ dia }}"
+                    data-slot="{{ slot }}"
+                    {% if disp %}checked{% endif %}
+                  />
+                </td>
+              {% endfor %}
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <div class="field">
+        <button class="button is-info" type="submit">Salvar disponibilidade</button>
+      </div>
+      <div class="notification is-hidden" id="disp-feedback"></div>
+    </form>
+  {% endif %}
+{% endblock %}
+
+{% block scripts %}
+  <script src="/static/js/professor-form.js" defer></script>
+{% endblock %}

@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}Grades · ClassCulator{% endblock %}
+
+{% block content %}
+  <div class="level">
+    <div class="level-left"><h1 class="title">Grades geradas</h1></div>
+    <div class="level-right">
+      <a class="button is-link" href="/grade/nova">+ Nova geração</a>
+    </div>
+  </div>
+
+  {% if grades %}
+    <table class="table is-fullwidth is-striped is-hoverable">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Semestre</th>
+          <th>Versão</th>
+          <th>Status</th>
+          <th>Solver</th>
+          <th>Score</th>
+          <th>Tempo (s)</th>
+          <th>Criada em</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for g in grades %}
+          <tr>
+            <td>{{ g.id }}</td>
+            <td>{{ g.semestre }}</td>
+            <td>v{{ g.versao }}</td>
+            <td>
+              <span class="tag is-{% if g.status.value == 'done' %}success{% elif g.status.value == 'failed' %}danger{% elif g.status.value == 'running' %}info{% else %}light{% endif %}">
+                {{ g.status.value }}
+              </span>
+            </td>
+            <td><code>{{ g.solver_usado or '?' }}</code></td>
+            <td>{{ "%.0f"|format(g.score_penalidade) if g.score_penalidade is not none else '—' }}</td>
+            <td>{{ "%.2f"|format(g.tempo_segundos) if g.tempo_segundos is not none else '—' }}</td>
+            <td>{{ g.criado_em.strftime("%d/%m/%Y %H:%M") }}</td>
+            <td><a class="button is-small" href="/grade/{{ g.id }}">Abrir</a></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="notification">
+      Nenhuma grade gerada ainda. <a href="/grade/nova">Gerar a primeira</a>.
+    </div>
+  {% endif %}
+{% endblock %}

@@ -1,0 +1,40 @@
+body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+main {
+  flex: 1 0 auto;
+}
+
+.footer {
+  flex-shrink: 0;
+  padding: 1.5rem;
+}
+
+.is-hidden {
+  display: none !important;
+}
+
+.grade-table th,
+.grade-table td {
+  vertical-align: middle;
+  min-width: 110px;
+}
+
+.grade-cell {
+  font-size: 0.85rem;
+  line-height: 1.2;
+}
+
+/* Areas (SC2 visualization) */
+.grade-cell[data-area="exatas"] { background-color: #e3f2ff; }
+.grade-cell[data-area="humanas"] { background-color: #fff3e0; }
+.grade-cell[data-area="biologicas"] { background-color: #e8f5e9; }
+.grade-cell[data-area="linguagens"] { background-color: #fce4ec; }
+.grade-cell[data-area="codigo"] { background-color: #ede7f6; }
+.grade-cell[data-area="programacao"] { background-color: #ede7f6; }
+.grade-cell[data-area="matematica"] { background-color: #e3f2ff; }
+.grade-cell[data-area="sistemas"] { background-color: #f1f8e9; }
+.grade-cell[data-area="redes"] { background-color: #fff8e1; }

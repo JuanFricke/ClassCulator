@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}{{ disciplina.nome if disciplina else "Nova disciplina" }} · ClassCulator{% endblock %}
+
+{% block content %}
+  <h1 class="title">{{ disciplina.nome if disciplina else "Nova disciplina" }}</h1>
+
+  <form
+    id="disciplina-form"
+    data-id="{{ disciplina.id if disciplina else '' }}"
+    class="box"
+  >
+    <div class="field">
+      <label class="label">Nome</label>
+      <div class="control">
+        <input class="input" name="nome" required maxlength="120"
+               value="{{ disciplina.nome if disciplina else '' }}" />
+      </div>
+    </div>
+    <div class="field">
+      <label class="label">Área do conhecimento</label>
+      <div class="control">
+        <input class="input" name="area" maxlength="60"
+               value="{{ disciplina.area if disciplina else 'geral' }}" />
+      </div>
+      <p class="help">Disciplinas com a mesma área são penalizadas se forem consecutivas (SC2).</p>
+    </div>
+    <div class="field is-grouped">
+      <div class="field is-expanded">
+        <label class="label">Carga semanal</label>
+        <div class="control">
+          <input class="input" type="number" name="carga_semanal" min="1" max="10"
+                 value="{{ disciplina.carga_semanal if disciplina else 2 }}" />
+        </div>
+      </div>
+      <div class="field is-expanded">
+        <label class="checkbox mt-5">
+          <input type="checkbox" name="requer_lab"
+                 {% if disciplina and disciplina.requer_lab %}checked{% endif %} />
+          Requer laboratório
+        </label>
+      </div>
+      <div class="field is-expanded">
+        <label class="checkbox mt-5">
+          <input type="checkbox" name="eh_teorica"
+                 {% if (disciplina is none) or disciplina.eh_teorica %}checked{% endif %} />
+          É teórica
+        </label>
+      </div>
+    </div>
+
+    <div class="field is-grouped">
+      <div class="control">
+        <button class="button is-link" type="submit">Salvar</button>
+      </div>
+      <div class="control">
+        <a class="button" href="/disciplinas">Voltar</a>
+      </div>
+    </div>
+    <div class="notification is-hidden" id="disciplina-feedback"></div>
+  </form>
+{% endblock %}
+
+{% block scripts %}
+  <script src="/static/js/disciplina-form.js" defer></script>
+{% endblock %}

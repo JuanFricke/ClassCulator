@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}Nova geração · ClassCulator{% endblock %}
+
+{% block content %}
+  <h1 class="title">Nova geração de grade</h1>
+  <p class="subtitle">
+    Configure os parâmetros e dispare a execução. O processo roda em background;
+    o status é atualizado por polling a cada 2 s.
+  </p>
+
+  <form id="gerar-form" class="box">
+    <div class="field">
+      <label class="label">Semestre</label>
+      <div class="control select is-fullwidth">
+        <select name="semestre">
+          {% for sem in semestres %}
+            <option value="{{ sem }}">{{ sem }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="label">Solver</label>
+      <div class="control">
+        <label class="radio">
+          <input type="radio" name="solver" value="cpsat" checked />
+          <strong>CP-SAT (OR-Tools)</strong> — produção
+        </label>
+        <label class="radio">
+          <input type="radio" name="solver" value="classic" />
+          <strong>Clássico</strong> — backtracking + FC + MRV → hill climbing
+        </label>
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="label">Timeout (segundos)</label>
+      <div class="control">
+        <input class="input" type="number" name="timeout_s" min="1" max="600" value="30" />
+      </div>
+    </div>
+
+    <div class="field is-grouped">
+      <div class="control">
+        <button class="button is-link" type="submit" id="btn-gerar">Gerar grade</button>
+      </div>
+      <div class="control">
+        <a class="button" href="/grade">Voltar</a>
+      </div>
+    </div>
+  </form>
+
+  <article id="progresso" class="message is-info is-hidden">
+    <div class="message-header">
+      <p>Execução em andamento</p>
+    </div>
+    <div class="message-body">
+      <progress class="progress is-info is-medium" max="100"></progress>
+      <p id="progresso-msg">Enfileirando tarefa…</p>
+    </div>
+  </article>
+{% endblock %}
+
+{% block scripts %}
+  <script src="/static/js/grade-poll.js" defer></script>
+{% endblock %}

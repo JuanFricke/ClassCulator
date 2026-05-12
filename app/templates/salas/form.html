@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}{{ sala.nome if sala else "Nova sala" }} · ClassCulator{% endblock %}
+
+{% block content %}
+  <h1 class="title">{{ sala.nome if sala else "Nova sala" }}</h1>
+
+  <form
+    id="sala-form"
+    data-id="{{ sala.id if sala else '' }}"
+    class="box"
+  >
+    <div class="field">
+      <label class="label">Nome</label>
+      <div class="control">
+        <input class="input" name="nome" required maxlength="80"
+               value="{{ sala.nome if sala else '' }}" />
+      </div>
+    </div>
+    <div class="field">
+      <label class="label">Tipo</label>
+      <div class="control select">
+        <select name="tipo">
+          <option value="sala" {% if sala and sala.tipo.value == 'sala' %}selected{% endif %}>Sala comum</option>
+          <option value="lab" {% if sala and sala.tipo.value == 'lab' %}selected{% endif %}>Laboratório</option>
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <label class="label">Capacidade</label>
+      <div class="control">
+        <input class="input" type="number" name="capacidade" min="1" max="300"
+               value="{{ sala.capacidade if sala else 40 }}" />
+      </div>
+    </div>
+    <div class="field is-grouped">
+      <div class="control">
+        <button class="button is-link" type="submit">Salvar</button>
+      </div>
+      <div class="control">
+        <a class="button" href="/salas">Voltar</a>
+      </div>
+    </div>
+    <div class="notification is-hidden" id="sala-feedback"></div>
+  </form>
+{% endblock %}
+
+{% block scripts %}
+  <script src="/static/js/sala-form.js" defer></script>
+{% endblock %}

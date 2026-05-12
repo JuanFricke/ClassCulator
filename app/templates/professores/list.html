@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}Professores · ClassCulator{% endblock %}
+
+{% block content %}
+  <div class="level">
+    <div class="level-left"><h1 class="title">Professores</h1></div>
+    <div class="level-right">
+      <a class="button is-link" href="/professores/novo">+ Novo professor</a>
+    </div>
+  </div>
+
+  {% if professores %}
+    <table class="table is-fullwidth is-striped is-hoverable">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Nome</th>
+          <th>E-mail</th>
+          <th>Disciplinas</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in professores %}
+          <tr>
+            <td>{{ p.id }}</td>
+            <td><a href="/professores/{{ p.id }}">{{ p.nome }}</a></td>
+            <td>{{ p.email or "—" }}</td>
+            <td>
+              {% for d in disciplinas_por_prof.get(p.id, []) %}
+                <span class="tag is-light">{{ d.nome }}</span>
+              {% else %}
+                <span class="has-text-grey">nenhuma</span>
+              {% endfor %}
+            </td>
+            <td class="has-text-right">
+              <a class="button is-small" href="/professores/{{ p.id }}">Editar</a>
+              <button
+                class="button is-small is-danger is-light"
+                data-delete-url="/api/v1/professores/{{ p.id }}"
+                data-confirm="Excluir professor {{ p.nome }}?"
+              >
+                Excluir
+              </button>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="notification">Nenhum professor cadastrado.</div>
+  {% endif %}
+{% endblock %}

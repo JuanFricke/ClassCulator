@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}Salas · ClassCulator{% endblock %}
+
+{% block content %}
+  <div class="level">
+    <div class="level-left"><h1 class="title">Salas</h1></div>
+    <div class="level-right">
+      <a class="button is-link" href="/salas/novo">+ Nova sala</a>
+    </div>
+  </div>
+
+  {% if salas %}
+    <table class="table is-fullwidth is-striped is-hoverable">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Nome</th>
+          <th>Tipo</th>
+          <th>Capacidade</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in salas %}
+          <tr>
+            <td>{{ s.id }}</td>
+            <td><a href="/salas/{{ s.id }}">{{ s.nome }}</a></td>
+            <td>
+              <span class="tag {% if s.tipo.value == 'lab' %}is-warning{% else %}is-light{% endif %}">
+                {{ s.tipo.value }}
+              </span>
+            </td>
+            <td>{{ s.capacidade }}</td>
+            <td class="has-text-right">
+              <a class="button is-small" href="/salas/{{ s.id }}">Editar</a>
+              <button
+                class="button is-small is-danger is-light"
+                data-delete-url="/api/v1/salas/{{ s.id }}"
+                data-confirm="Excluir sala {{ s.nome }}?"
+              >Excluir</button>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="notification">Nenhuma sala cadastrada.</div>
+  {% endif %}
+{% endblock %}

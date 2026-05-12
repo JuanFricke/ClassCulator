@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block title %}{{ turma.identificador if turma else "Nova turma" }} · ClassCulator{% endblock %}
+
+{% block content %}
+  <h1 class="title">{{ turma.identificador if turma else "Nova turma" }}</h1>
+
+  <form
+    id="turma-form"
+    data-id="{{ turma.id if turma else '' }}"
+    class="box"
+  >
+    <div class="field">
+      <label class="label">Identificador</label>
+      <div class="control">
+        <input class="input" name="identificador" required maxlength="40"
+               value="{{ turma.identificador if turma else '' }}" />
+      </div>
+    </div>
+    <div class="field is-grouped">
+      <div class="field is-expanded">
+        <label class="label">Semestre</label>
+        <div class="control">
+          <input class="input" name="semestre" maxlength="20"
+                 value="{{ turma.semestre if turma else '2026/1' }}" />
+        </div>
+      </div>
+      <div class="field is-expanded">
+        <label class="label">Quantidade de alunos</label>
+        <div class="control">
+          <input class="input" type="number" name="qtd_alunos" min="1" max="200"
+                 value="{{ turma.qtd_alunos if turma else 30 }}" />
+        </div>
+      </div>
+    </div>
+    <div class="field is-grouped">
+      <div class="control">
+        <button class="button is-link" type="submit">Salvar</button>
+      </div>
+      <div class="control">
+        <a class="button" href="/turmas">Voltar</a>
+      </div>
+    </div>
+    <div class="notification is-hidden" id="turma-feedback"></div>
+  </form>
+
+  {% if turma %}
+    <h2 class="title is-4 mt-5">Currículo da turma</h2>
+    <p class="subtitle is-6">
+      Escolha as disciplinas e o professor responsável por cada uma. A carga horária
+      é definida na própria disciplina.
+    </p>
+
+    <form id="curriculo-form" data-turma-id="{{ turma.id }}" class="box">
+      <table class="table is-fullwidth" id="curriculo-table">
+        <thead>
+          <tr>
+            <th>Disciplina</th>
+            <th>Professor</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in curriculo %}
+            <tr>
+              <td>
+                <div class="select is-fullwidth">
+                  <select name="disciplina_id">
+                    {% for d in disciplinas %}
+                      <option value="{{ d.id }}" {% if d.id == item.disciplina_id %}selected{% endif %}>
+                        {{ d.nome }} ({{ d.carga_semanal }}h)
+                      </option>
+                    {% endfor %}
+                  </select>
+                </div>
+              </td>
+              <td>
+                <div class="select is-fullwidth">
+                  <select name="professor_id">
+                    {% for p in professores %}
+                      <option value="{{ p.id }}" {% if p.id == item.professor_id %}selected{% endif %}>
+                        {{ p.nome }}
+                      </option>
+                    {% endfor %}
+                  </select>
+                </div>
+              </td>
+              <td>
+                <button type="button" class="button is-small is-danger is-light js-remove-row">×</button>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <template id="curriculo-row-template">
+        <tr>
+          <td>
+            <div class="select is-fullwidth">
+              <select name="disciplina_id">
+                {% for d in disciplinas %}
+                  <option value="{{ d.id }}">{{ d.nome }} ({{ d.carga_semanal }}h)</option>
+                {% endfor %}
+              </select>
+            </div>
+          </td>
+          <td>
+            <div class="select is-fullwidth">
+              <select name="professor_id">
+                {% for p in professores %}
+                  <option value="{{ p.id }}">{{ p.nome }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </td>
+          <td>
+            <button type="button" class="button is-small is-danger is-light js-remove-row">×</button>
+          </td>
+        </tr>
+      </template>
+
+      <div class="field is-grouped">
+        <div class="control">
+          <button type="button" class="button is-info is-light" id="curriculo-add">+ adicionar linha</button>
+        </div>
+        <div class="control">
+          <button class="button is-link" type="submit">Salvar currículo</button>
+        </div>
+      </div>
+      <div class="notification is-hidden" id="curriculo-feedback"></div>
+    </form>
+  {% endif %}
+{% endblock %}
+
+{% block scripts %}
+  <script src="/static/js/turma-form.js" defer></script>
+{% endblock %}

@@ -1,0 +1,79 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: classculator-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-classculator}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-classculator}
+      POSTGRES_DB: ${POSTGRES_DB:-classculator}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-classculator} -d ${POSTGRES_DB:-classculator}",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: classculator-app:latest
+    container_name: classculator-migrate
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://classculator:classculator@db:5432/classculator}
+      SYNC_DATABASE_URL: ${SYNC_DATABASE_URL:-postgresql+psycopg://classculator:classculator@db:5432/classculator}
+    volumes:
+      - .:/app
+    command: ["alembic", "upgrade", "head"]
+    restart: "no"
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: classculator-app:latest
+    container_name: classculator-app
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://classculator:classculator@db:5432/classculator}
+      SYNC_DATABASE_URL: ${SYNC_DATABASE_URL:-postgresql+psycopg://classculator:classculator@db:5432/classculator}
+      APP_ENV: ${APP_ENV:-dev}
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    volumes:
+      - .:/app
+    command:
+      [
+        "uvicorn",
+        "app.main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8000",
+        "--reload",
+        "--reload-dir",
+        "/app/app",
+      ]
+    restart: unless-stopped
+
+volumes:
+  pgdata:

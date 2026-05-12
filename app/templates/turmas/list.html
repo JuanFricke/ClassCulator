@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}Turmas · ClassCulator{% endblock %}
+
+{% block content %}
+  <div class="level">
+    <div class="level-left"><h1 class="title">Turmas</h1></div>
+    <div class="level-right">
+      <a class="button is-link" href="/turmas/novo">+ Nova turma</a>
+    </div>
+  </div>
+
+  {% if turmas %}
+    <table class="table is-fullwidth is-striped is-hoverable">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Identificador</th>
+          <th>Semestre</th>
+          <th>Alunos</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in turmas %}
+          <tr>
+            <td>{{ t.id }}</td>
+            <td><a href="/turmas/{{ t.id }}">{{ t.identificador }}</a></td>
+            <td>{{ t.semestre }}</td>
+            <td>{{ t.qtd_alunos }}</td>
+            <td class="has-text-right">
+              <a class="button is-small" href="/turmas/{{ t.id }}">Editar</a>
+              <button
+                class="button is-small is-danger is-light"
+                data-delete-url="/api/v1/turmas/{{ t.id }}"
+                data-confirm="Excluir turma {{ t.identificador }}?"
+              >Excluir</button>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="notification">Nenhuma turma cadastrada.</div>
+  {% endif %}
+{% endblock %}
