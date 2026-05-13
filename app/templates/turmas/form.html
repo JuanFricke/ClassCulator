@@ -1,41 +1,61 @@
 {% extends "base.html" %}
+{% from "_macros.html" import icon, page_header, step_indicator, context_help %}
 
 {% block title %}{{ turma.identificador if turma else "Nova turma" }} · ClassCulator{% endblock %}
 
 {% block content %}
-  <h1 class="title">{{ turma.identificador if turma else "Nova turma" }}</h1>
+  <nav class="breadcrumb" aria-label="breadcrumbs">
+    <ul>
+      <li><a href="/">Painel</a></li>
+      <li><a href="/turmas">Turmas</a></li>
+      <li class="is-active"><a href="#" aria-current="page">
+        {{ turma.identificador if turma else "Nova turma" }}
+      </a></li>
+    </ul>
+  </nav>
+
+  {{ page_header(turma.identificador if turma else "Nova turma", "users") }}
+  {{ step_indicator(1) }}
+  {{ context_help("Etapa 1 de 5", "Cadastre as turmas primeiro. Depois você vai definir disciplinas, professores e salas.") }}
 
   <form
     id="turma-form"
     data-id="{{ turma.id if turma else '' }}"
-    class="box"
+    class="cc-card"
   >
     <div class="field">
-      <label class="label">Identificador</label>
+      <label class="label" for="turma-identificador">Identificador da turma</label>
       <div class="control">
-        <input class="input" name="identificador" required maxlength="40"
+        <input id="turma-identificador" class="input" name="identificador" required maxlength="40"
+               placeholder="Ex.: EM-1A, EF-9B…"
                value="{{ turma.identificador if turma else '' }}" />
       </div>
+      <p class="help has-text-grey">Como esta turma será exibida nas grades e relatórios.</p>
     </div>
     <div class="field is-grouped">
       <div class="field is-expanded">
-        <label class="label">Semestre</label>
+        <label class="label" for="turma-semestre">Semestre</label>
         <div class="control">
-          <input class="input" name="semestre" maxlength="20"
+          <input id="turma-semestre" class="input" name="semestre" maxlength="20"
                  value="{{ turma.semestre if turma else '2026/1' }}" />
         </div>
       </div>
       <div class="field is-expanded">
-        <label class="label">Quantidade de alunos</label>
+        <label class="label" for="turma-qtd-alunos">Quantos alunos?</label>
         <div class="control">
-          <input class="input" type="number" name="qtd_alunos" min="1" max="200"
+          <input id="turma-qtd-alunos" class="input" type="number" name="qtd_alunos" min="1" max="200"
                  value="{{ turma.qtd_alunos if turma else 30 }}" />
         </div>
       </div>
     </div>
     <div class="field is-grouped">
       <div class="control">
-        <button class="button is-link" type="submit">Salvar</button>
+        <button class="button is-link" type="submit">
+          {{ icon("check", "mr-1") }} Salvar dados da turma
+        </button>
+      </div>
+      <div class="control">
+        <a class="button is-link is-light" href="/disciplinas/novo">Próxima etapa: Disciplinas</a>
       </div>
       <div class="control">
         <a class="button" href="/turmas">Voltar</a>
@@ -45,53 +65,78 @@
   </form>
 
   {% if turma %}
-    <h2 class="title is-4 mt-5">Currículo da turma</h2>
-    <p class="subtitle is-6">
-      Escolha as disciplinas e o professor responsável por cada uma. A carga horária
-      é definida na própria disciplina.
+    <h2 class="title is-4 mt-5">
+      {{ icon("book", "mr-2") }}Currículo da turma
+    </h2>
+    <p class="subtitle is-6 has-text-grey">
+      Escolha quais disciplinas a turma terá e o professor responsável por cada uma.
+      A carga horária semanal de cada disciplina já vem do cadastro dela.
     </p>
 
-    <form id="curriculo-form" data-turma-id="{{ turma.id }}" class="box">
-      <table class="table is-fullwidth" id="curriculo-table">
-        <thead>
-          <tr>
-            <th>Disciplina</th>
-            <th>Professor</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for item in curriculo %}
+    <form id="curriculo-form" data-turma-id="{{ turma.id }}"
+          data-carga-alvo="{{ carga_alvo }}" class="cc-card">
+      <div class="mb-4">
+        <div class="is-flex is-justify-content-space-between is-align-items-center mb-2">
+          <strong>Carga semanal montada</strong>
+          <span id="carga-status" class="has-text-grey">
+            <span id="carga-atual">{{ carga_atual }}</span> de
+            {{ carga_alvo }} aulas
+          </span>
+        </div>
+        <div class="carga-progress" id="carga-bar">
+          <div class="carga-fill" style="width: 0%"></div>
+          <span class="carga-label" id="carga-label">0 / {{ carga_alvo }}</span>
+        </div>
+        <p class="help has-text-grey mt-2">
+          Toda turma deve fechar exatamente <strong>{{ carga_alvo }} aulas/semana</strong>.
+          A grade não é gerada com currículo incompleto ou em excesso.
+        </p>
+      </div>
+
+      <div class="table-container">
+        <table class="table is-fullwidth" id="curriculo-table">
+          <thead>
             <tr>
-              <td>
-                <div class="select is-fullwidth">
-                  <select name="disciplina_id">
-                    {% for d in disciplinas %}
-                      <option value="{{ d.id }}" {% if d.id == item.disciplina_id %}selected{% endif %}>
-                        {{ d.nome }} ({{ d.carga_semanal }}h)
-                      </option>
-                    {% endfor %}
-                  </select>
-                </div>
-              </td>
-              <td>
-                <div class="select is-fullwidth">
-                  <select name="professor_id">
-                    {% for p in professores %}
-                      <option value="{{ p.id }}" {% if p.id == item.professor_id %}selected{% endif %}>
-                        {{ p.nome }}
-                      </option>
-                    {% endfor %}
-                  </select>
-                </div>
-              </td>
-              <td>
-                <button type="button" class="button is-small is-danger is-light js-remove-row">×</button>
-              </td>
+              <th style="width: 50%">Disciplina</th>
+              <th>Professor</th>
+              <th style="width: 4rem"></th>
             </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {% for item in curriculo %}
+              <tr>
+                <td>
+                  <div class="select is-fullwidth">
+                    <select name="disciplina_id">
+                      {% for d in disciplinas %}
+                        <option value="{{ d.id }}" data-carga="{{ d.carga_semanal }}"
+                                {% if d.id == item.disciplina_id %}selected{% endif %}>
+                          {{ d.nome }} ({{ d.carga_semanal }} aulas/sem)
+                        </option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                </td>
+                <td>
+                  <div class="select is-fullwidth">
+                    <select name="professor_id">
+                      {% for p in professores %}
+                        <option value="{{ p.id }}" {% if p.id == item.professor_id %}selected{% endif %}>
+                          {{ p.nome }}
+                        </option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                </td>
+                <td>
+                  <button type="button" class="button is-small is-danger is-light js-remove-row"
+                          title="Remover disciplina">×</button>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
 
       <template id="curriculo-row-template">
         <tr>
@@ -99,7 +144,9 @@
             <div class="select is-fullwidth">
               <select name="disciplina_id">
                 {% for d in disciplinas %}
-                  <option value="{{ d.id }}">{{ d.nome }} ({{ d.carga_semanal }}h)</option>
+                  <option value="{{ d.id }}" data-carga="{{ d.carga_semanal }}">
+                    {{ d.nome }} ({{ d.carga_semanal }} aulas/sem)
+                  </option>
                 {% endfor %}
               </select>
             </div>
@@ -114,17 +161,22 @@
             </div>
           </td>
           <td>
-            <button type="button" class="button is-small is-danger is-light js-remove-row">×</button>
+            <button type="button" class="button is-small is-danger is-light js-remove-row"
+                    title="Remover disciplina">×</button>
           </td>
         </tr>
       </template>
 
       <div class="field is-grouped">
         <div class="control">
-          <button type="button" class="button is-info is-light" id="curriculo-add">+ adicionar linha</button>
+          <button type="button" class="button is-info is-light" id="curriculo-add">
+            + Adicionar disciplina
+          </button>
         </div>
         <div class="control">
-          <button class="button is-link" type="submit">Salvar currículo</button>
+          <button class="button is-link" type="submit">
+            {{ icon("check", "mr-1") }} Salvar currículo
+          </button>
         </div>
       </div>
       <div class="notification is-hidden" id="curriculo-feedback"></div>

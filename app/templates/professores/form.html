@@ -1,61 +1,91 @@
 {% extends "base.html" %}
+{% from "_macros.html" import icon, page_header, step_indicator, context_help %}
 
 {% block title %}{{ professor.nome if professor else "Novo professor" }} · ClassCulator{% endblock %}
 
 {% block content %}
-  <h1 class="title">{{ professor.nome if professor else "Novo professor" }}</h1>
+  <nav class="breadcrumb" aria-label="breadcrumbs">
+    <ul>
+      <li><a href="/">Painel</a></li>
+      <li><a href="/professores">Professores</a></li>
+      <li class="is-active"><a href="#" aria-current="page">
+        {{ professor.nome if professor else "Novo professor" }}
+      </a></li>
+    </ul>
+  </nav>
+
+  {{ page_header(professor.nome if professor else "Novo professor", "teacher") }}
+  {{ step_indicator(3) }}
+  {{ context_help("Etapa 3 de 5", "Vincule cada professor às disciplinas e registre disponibilidade para reduzir conflitos.") }}
 
   <form
     id="professor-form"
     data-id="{{ professor.id if professor else '' }}"
-    class="box"
+    class="cc-card"
   >
     <div class="field">
-      <label class="label">Nome</label>
+      <label class="label" for="professor-nome">Nome completo</label>
       <div class="control">
         <input
+          id="professor-nome"
           class="input"
           name="nome"
           required
           maxlength="120"
+          placeholder="Ex.: Ana Souza"
           value="{{ professor.nome if professor else '' }}"
         />
       </div>
     </div>
     <div class="field">
-      <label class="label">E-mail</label>
+      <label class="label" for="professor-email">E-mail <span class="has-text-grey">(opcional)</span></label>
       <div class="control">
         <input
+          id="professor-email"
           class="input"
           name="email"
           maxlength="120"
+          placeholder="exemplo@escola.com"
           value="{{ professor.email if professor and professor.email else '' }}"
         />
       </div>
     </div>
 
     <div class="field">
-      <label class="label">Disciplinas que leciona</label>
+      <label class="label">Disciplinas que pode lecionar</label>
       <div class="control">
-        <div class="tags">
-          {% for d in disciplinas %}
-            <label class="checkbox mr-3">
-              <input
-                type="checkbox"
-                name="disciplina_ids"
-                value="{{ d.id }}"
-                {% if d.id in disciplina_ids %}checked{% endif %}
-              />
-              {{ d.nome }}
-            </label>
-          {% endfor %}
-        </div>
+        {% if disciplinas %}
+          <div class="checkbox-list">
+            {% for d in disciplinas %}
+              <label class="checkbox mr-3 is-block py-1">
+                <input
+                  type="checkbox"
+                  name="disciplina_ids"
+                  value="{{ d.id }}"
+                  {% if d.id in disciplina_ids %}checked{% endif %}
+                />
+                {{ d.nome }}
+                <span class="tag is-light ml-1">{{ d.area }}</span>
+              </label>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p class="has-text-grey">
+            Nenhuma disciplina cadastrada ainda.
+            <a href="/disciplinas/novo">Cadastre a primeira</a>.
+          </p>
+        {% endif %}
       </div>
     </div>
 
     <div class="field is-grouped">
       <div class="control">
-        <button class="button is-link" type="submit">Salvar</button>
+        <button class="button is-link" type="submit">
+          {{ icon("check", "mr-1") }} Salvar
+        </button>
+      </div>
+      <div class="control">
+        <a class="button is-link is-light" href="/salas/novo">Próxima etapa: Salas</a>
       </div>
       <div class="control">
         <a class="button" href="/professores">Voltar</a>
@@ -65,40 +95,69 @@
   </form>
 
   {% if professor %}
-    <h2 class="title is-4 mt-5">Disponibilidade semanal</h2>
-    <p class="subtitle is-6">Desmarque os horários em que o professor <strong>não pode</strong> dar aula.</p>
+    <h2 class="title is-4 mt-5">
+      {{ icon("calendar", "mr-2") }}Disponibilidade semanal
+    </h2>
+    <p class="subtitle is-6 has-text-grey">
+      Marque (✓) os horários em que o professor <strong>pode</strong> dar aula.
+      Os horários desmarcados serão evitados pelo sistema na hora de montar a grade.
+    </p>
 
-    <form id="disponibilidade-form" data-prof-id="{{ professor.id }}" class="box">
-      <table class="table is-bordered is-narrow has-text-centered" style="width: auto;">
-        <thead>
-          <tr>
-            <th></th>
-            {% for slot in SLOTS %}
-              <th>{{ SLOT_LABELS[slot] }}</th>
-            {% endfor %}
-          </tr>
-        </thead>
-        <tbody>
-          {% for dia in DIAS %}
+    <form id="disponibilidade-form" data-prof-id="{{ professor.id }}" class="cc-card">
+      <div class="field is-grouped is-grouped-multiline mb-3">
+        <div class="control">
+          <button type="button" class="button is-small is-info is-light" id="disp-all">
+            Todos os horários disponíveis
+          </button>
+        </div>
+        <div class="control">
+          <button type="button" class="button is-small is-warning is-light" id="disp-none">
+            Marcar todos como indisponíveis
+          </button>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <table class="table is-bordered is-narrow has-text-centered disp-grid">
+          <thead>
             <tr>
-              <th>{{ DIAS_LABELS[dia] }}</th>
+              <th></th>
               {% for slot in SLOTS %}
-                {% set disp = disponibilidade.get((dia, slot), True) %}
-                <td>
-                  <input
-                    type="checkbox"
-                    data-dia="{{ dia }}"
-                    data-slot="{{ slot }}"
-                    {% if disp %}checked{% endif %}
-                  />
-                </td>
+                <th>{{ SLOT_LABELS[slot] }}</th>
               {% endfor %}
+              <th></th>
             </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-      <div class="field">
-        <button class="button is-info" type="submit">Salvar disponibilidade</button>
+          </thead>
+          <tbody>
+            {% for dia in DIAS %}
+              <tr>
+                <th>{{ DIAS_LABELS[dia] }}</th>
+                {% for slot in SLOTS %}
+                  {% set disp = disponibilidade.get((dia, slot), True) %}
+                  <td class="{% if not disp %}is-unavailable{% endif %}">
+                    <input
+                      type="checkbox"
+                      data-dia="{{ dia }}"
+                      data-slot="{{ slot }}"
+                      {% if disp %}checked{% endif %}
+                    />
+                  </td>
+                {% endfor %}
+                <td class="disp-day-actions">
+                  <button type="button" class="button is-small is-light"
+                          data-disp-day-on="{{ dia }}" title="Disponível o dia inteiro">✓ todos</button>
+                  <button type="button" class="button is-small is-light"
+                          data-disp-day-off="{{ dia }}" title="Indisponível o dia inteiro">✗ nenhum</button>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="field mt-3">
+        <button class="button is-link" type="submit">
+          {{ icon("check", "mr-1") }} Salvar disponibilidade
+        </button>
       </div>
       <div class="notification is-hidden" id="disp-feedback"></div>
     </form>

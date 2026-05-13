@@ -1,65 +1,120 @@
 {% extends "base.html" %}
+{% from "_macros.html" import icon, readiness_row, page_header, step_indicator, context_help %}
 
-{% block title %}Nova geração · ClassCulator{% endblock %}
+{% block title %}Gerar grade · ClassCulator{% endblock %}
 
 {% block content %}
-  <h1 class="title">Nova geração de grade</h1>
-  <p class="subtitle">
-    Configure os parâmetros e dispare a execução. O processo roda em background;
-    o status é atualizado por polling a cada 2 s.
-  </p>
+  <nav class="breadcrumb" aria-label="breadcrumbs">
+    <ul>
+      <li><a href="/">Painel</a></li>
+      <li><a href="/grade">Grades</a></li>
+      <li class="is-active"><a href="#" aria-current="page">Nova geração</a></li>
+    </ul>
+  </nav>
 
-  <form id="gerar-form" class="box">
+  {{ page_header("Gerar uma nova grade", "play", "O cálculo roda em segundo plano e redireciona automaticamente ao concluir.") }}
+  {{ step_indicator(5) }}
+  {{ context_help("Etapa 5 de 5", "Revise as pendências abaixo. Se tudo estiver pronto, você já pode gerar a grade.") }}
+
+  {% if not readiness.tudo_pronto %}
+    <article class="notification is-warning is-light">
+      <p class="mb-2">
+        <strong>Alguns ajustes pendentes podem impedir a geração.</strong>
+        Revise os itens abaixo para habilitar a geração.
+      </p>
+      {% for etapa in readiness.etapas %}
+        {% if not etapa.ok %}
+          {{ readiness_row(false, etapa.titulo, etapa.detalhe, etapa.action_url, etapa.action_label) }}
+        {% endif %}
+      {% endfor %}
+    </article>
+  {% endif %}
+
+  <form id="gerar-form" class="cc-card">
     <div class="field">
-      <label class="label">Semestre</label>
-      <div class="control select is-fullwidth">
-        <select name="semestre">
-          {% for sem in semestres %}
-            <option value="{{ sem }}">{{ sem }}</option>
-          {% endfor %}
-        </select>
+      <label class="label" for="grade-semestre">Semestre</label>
+      <div class="control">
+        <div class="select is-fullwidth">
+          <select id="grade-semestre" name="semestre">
+            {% for sem in semestres %}
+              <option value="{{ sem }}">{{ sem }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <p class="help has-text-grey">Apenas turmas vinculadas a este semestre são consideradas.</p>
+    </div>
+
+    <div class="field mt-4">
+      <label class="label">Como gerar?</label>
+      <div class="columns">
+        <div class="column is-6">
+          <label class="mode-card">
+            <input type="radio" name="solver" value="cpsat" checked />
+            <span class="mode-badge">Recomendado</span>
+            <h3 class="title is-5 mt-0">
+              {{ icon("wand", "mr-1") }} Modo otimizado
+            </h3>
+            <p>
+              Procura a melhor combinação possível dentro do tempo limite.
+              Demora um pouco mais, mas gera grades com muito menos janelas vazias
+              e mais agrupamentos.
+            </p>
+          </label>
+        </div>
+        <div class="column is-6">
+          <label class="mode-card">
+            <input type="radio" name="solver" value="classic" />
+            <h3 class="title is-5 mt-0">
+              {{ icon("play", "mr-1") }} Modo rápido
+            </h3>
+            <p>
+              Gera uma primeira versão funcional em segundos. Ideal para
+              testar mudanças ou ver rapidamente uma grade preliminar.
+            </p>
+          </label>
+        </div>
       </div>
     </div>
 
-    <div class="field">
-      <label class="label">Solver</label>
-      <div class="control">
-        <label class="radio">
-          <input type="radio" name="solver" value="cpsat" checked />
-          <strong>CP-SAT (OR-Tools)</strong> — produção
-        </label>
-        <label class="radio">
-          <input type="radio" name="solver" value="classic" />
-          <strong>Clássico</strong> — backtracking + FC + MRV → hill climbing
-        </label>
+    <div class="field mt-3">
+      <label class="label" for="grade-timeout">Tempo máximo de cálculo</label>
+      <div class="field has-addons">
+        <div class="control">
+          <input id="grade-timeout" class="input" type="number" name="timeout_s" min="5" max="600" value="30" style="max-width: 8rem;" />
+        </div>
+        <div class="control"><span class="button is-static">segundos</span></div>
       </div>
+      <p class="help has-text-grey">
+        Mais tempo costuma gerar uma grade melhor no modo otimizado.
+        Para um colégio inteiro, 60 a 120 segundos é o ideal.
+      </p>
     </div>
 
-    <div class="field">
-      <label class="label">Timeout (segundos)</label>
-      <div class="control">
-        <input class="input" type="number" name="timeout_s" min="1" max="600" value="30" />
-      </div>
-    </div>
+    {% if not readiness.tudo_pronto %}
+      <article class="notification is-warning is-light">
+        Conclua os itens pendentes acima para liberar o botão de geração.
+      </article>
+    {% endif %}
 
-    <div class="field is-grouped">
+    <div class="field is-grouped mt-5">
       <div class="control">
-        <button class="button is-link" type="submit" id="btn-gerar">Gerar grade</button>
+        <button class="button is-link is-medium" type="submit" id="btn-gerar" {% if not readiness.tudo_pronto %}disabled{% endif %}>
+          {{ icon("play", "mr-1") }} Gerar agora
+        </button>
       </div>
       <div class="control">
-        <a class="button" href="/grade">Voltar</a>
+        <a class="button is-medium" href="/grade">Cancelar</a>
       </div>
     </div>
   </form>
 
-  <article id="progresso" class="message is-info is-hidden">
-    <div class="message-header">
-      <p>Execução em andamento</p>
-    </div>
-    <div class="message-body">
-      <progress class="progress is-info is-medium" max="100"></progress>
-      <p id="progresso-msg">Enfileirando tarefa…</p>
-    </div>
+  <article id="progresso" class="notification is-info is-light is-hidden mt-4">
+    <p class="title is-6 mt-0">
+      {{ icon("play", "mr-1") }} Gerando sua grade…
+    </p>
+    <progress class="progress is-info" max="100"></progress>
+    <p id="progresso-msg">Enfileirando tarefa…</p>
   </article>
 {% endblock %}
 
