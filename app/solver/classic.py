@@ -11,6 +11,7 @@ import time
 from copy import deepcopy
 
 from app.solver.constraints import calcular_score
+from app.solver.diagnostics import necessary_condition_report
 from app.solver.domain import (
     DIAS,
     SLOTS_DIA,
@@ -41,9 +42,10 @@ def solve_classic(
     domains = _initial_domains(instance)
 
     if any(len(d) == 0 for d in domains.values()):
+        diag = necessary_condition_report(instance)
         return SolverResult(
             status=SolverStatus.INFEASIBLE,
-            log="Domínio vazio detectado em pré-processamento (HC5/HC4 inviável).",
+            log="Domínio vazio detectado em pré-processamento (HC5/HC4 inviável).\n" + diag,
             elapsed_s=time.monotonic() - started,
         )
 
@@ -65,7 +67,7 @@ def solve_classic(
             )
         return SolverResult(
             status=SolverStatus.INFEASIBLE,
-            log="Backtracking não encontrou solução viável.",
+            log="Backtracking não encontrou solução viável.\n" + necessary_condition_report(instance),
             elapsed_s=elapsed,
         )
 

@@ -32,6 +32,28 @@
       </div>
     </div>
     <div class="field">
+      <label class="label" for="disciplina-ensino">Nível de ensino</label>
+      <div class="control">
+        <div class="select is-fullwidth">
+          {% set ensino_atual = disciplina.ensino if disciplina else "ambos" %}
+          <select id="disciplina-ensino" name="ensino">
+            {% for ensino in ensino_options %}
+              <option value="{{ ensino }}" {% if ensino == ensino_atual %}selected{% endif %}>
+                {% if ensino == "fundamental" %}
+                  Ensino Fundamental
+                {% elif ensino == "medio" %}
+                  Ensino Médio
+                {% else %}
+                  Ambos
+                {% endif %}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <p class="help has-text-grey">Use esta tag para separar corretamente disciplinas por nível.</p>
+    </div>
+    <div class="field">
       <label class="label" for="disciplina-area">Área de conhecimento</label>
       <div class="control">
         <div class="select is-fullwidth">

@@ -9,6 +9,7 @@ class Turma(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     identificador: Mapped[str] = mapped_column(String(40), nullable=False, unique=True)
+    ensino: Mapped[str] = mapped_column(String(20), nullable=False, default="fundamental")
     semestre: Mapped[str] = mapped_column(String(20), nullable=False, default="2026/1")
     qtd_alunos: Mapped[int] = mapped_column(Integer, nullable=False, default=30)
 

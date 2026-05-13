@@ -23,6 +23,7 @@
           <thead>
             <tr>
               <th>Nome</th>
+              <th>Ensino</th>
               <th>Área</th>
               <th>Aulas/semana</th>
               <th>Características</th>
@@ -33,6 +34,15 @@
             {% for d in disciplinas %}
               <tr>
                 <td><a href="/disciplinas/{{ d.id }}"><strong>{{ d.nome }}</strong></a></td>
+                <td>
+                  {% if d.ensino == "fundamental" %}
+                    <span class="tag is-primary is-light">Fundamental</span>
+                  {% elif d.ensino == "medio" %}
+                    <span class="tag is-link is-light">Médio</span>
+                  {% else %}
+                    <span class="tag is-info is-light">Ambos</span>
+                  {% endif %}
+                </td>
                 <td><span class="tag is-info is-light">{{ d.area }}</span></td>
                 <td>{{ d.carga_semanal }}</td>
                 <td>

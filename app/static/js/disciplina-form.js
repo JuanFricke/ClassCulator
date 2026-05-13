@@ -1,11 +1,26 @@
 const form = document.getElementById("disciplina-form");
 const feedback = document.getElementById("disciplina-feedback");
+const nomeInput = document.getElementById("disciplina-nome");
+const ensinoSelect = document.getElementById("disciplina-ensino");
+
+function inferEnsinoFromNome(nome) {
+  const upper = (nome || "").toUpperCase();
+  if (/\bEF\b/.test(upper)) return "fundamental";
+  if (/\bEM\b/.test(upper)) return "medio";
+  return "ambos";
+}
+
+nomeInput?.addEventListener("input", () => {
+  if (!ensinoSelect) return;
+  ensinoSelect.value = inferEnsinoFromNome(nomeInput.value);
+});
 
 form?.addEventListener("submit", async (event) => {
   event.preventDefault();
   const data = new FormData(form);
   const payload = {
     nome: data.get("nome"),
+    ensino: inferEnsinoFromNome(data.get("nome")),
     area: data.get("area"),
     carga_semanal: parseInt(data.get("carga_semanal"), 10),
     requer_lab: data.get("requer_lab") === "on",

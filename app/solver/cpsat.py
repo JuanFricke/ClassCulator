@@ -25,6 +25,7 @@ from app.solver.constraints import (
     PESO_SC4,
     calcular_score,
 )
+from app.solver.diagnostics import necessary_condition_report
 from app.solver.domain import (
     DIAS,
     HC4_MIN_AULAS_QUARTA,
@@ -143,6 +144,7 @@ def solve_cpsat(
 
     if status_code == cp_model.INFEASIBLE:
         log_lines.append("[cpsat] modelo INVIÁVEL com as restrições atuais.")
+        log_lines.append(necessary_condition_report(instance))
         return SolverResult(
             status=SolverStatus.INFEASIBLE,
             elapsed_s=elapsed,

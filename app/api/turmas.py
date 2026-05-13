@@ -2,7 +2,8 @@ from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import delete, select
 
 from app.core.deps import SessionDep
-from app.models import Turma, TurmaDisciplina
+from app.core.ensino import ensino_compativel, infer_turma_ensino
+from app.models import Disciplina, ProfessorDisciplina, Turma, TurmaDisciplina
 from app.schemas import (
     TurmaCreate,
     TurmaCurriculoBulkUpdate,
@@ -23,6 +24,7 @@ async def _serialize(session, turma: Turma) -> TurmaRead:
         {
             "id": turma.id,
             "identificador": turma.identificador,
+            "ensino": turma.ensino,
             "semestre": turma.semestre,
             "qtd_alunos": turma.qtd_alunos,
             "curriculo": [c.model_dump() for c in curriculo],
@@ -39,7 +41,9 @@ async def list_turmas(session: SessionDep) -> list[TurmaRead]:
 
 @router.post("", response_model=TurmaRead, status_code=status.HTTP_201_CREATED)
 async def create_turma(payload: TurmaCreate, session: SessionDep) -> TurmaRead:
-    obj = Turma(**payload.model_dump())
+    data = payload.model_dump()
+    data["ensino"] = infer_turma_ensino(data["identificador"], data.get("ensino") or "fundamental")
+    obj = Turma(**data)
     session.add(obj)
     await session.commit()
     await session.refresh(obj)
@@ -59,7 +63,10 @@ async def update_turma(turma_id: int, payload: TurmaUpdate, session: SessionDep)
     obj = await session.get(Turma, turma_id)
     if obj is None:
         raise HTTPException(status_code=404, detail="Turma não encontrada")
-    for field, value in payload.model_dump(exclude_unset=True).items():
+    data = payload.model_dump(exclude_unset=True)
+    if "identificador" in data:
+        data["ensino"] = infer_turma_ensino(data["identificador"], data.get("ensino") or obj.ensino)
+    for field, value in data.items():
         setattr(obj, field, value)
     await session.commit()
     await session.refresh(obj)
@@ -82,6 +89,59 @@ async def set_curriculo(
     obj = await session.get(Turma, turma_id)
     if obj is None:
         raise HTTPException(status_code=404, detail="Turma não encontrada")
+    allowed_pairs = set(
+        (
+            await session.execute(
+                select(
+                    ProfessorDisciplina.professor_id,
+                    ProfessorDisciplina.disciplina_id,
+                )
+            )
+        ).all()
+    )
+    for item in payload.items:
+        if (item.professor_id, item.disciplina_id) not in allowed_pairs:
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    "Professor selecionado não pode lecionar a disciplina informada. "
+                    "Atualize os vínculos de disciplinas do professor antes de salvar o currículo."
+                ),
+            )
+    disciplina_ids = [item.disciplina_id for item in payload.items]
+    disciplinas = {}
+    carga_total = 0
+    if disciplina_ids:
+        disciplinas = {
+            d.id: d
+            for d in (
+                await session.execute(
+                    select(Disciplina).where(Disciplina.id.in_(disciplina_ids))
+                )
+            ).scalars().all()
+        }
+    for item in payload.items:
+        disciplina = disciplinas.get(item.disciplina_id)
+        if disciplina is None:
+            raise HTTPException(status_code=404, detail="Disciplina não encontrada")
+        carga_total += disciplina.carga_semanal
+        if not ensino_compativel(obj.ensino, disciplina.ensino):
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    f"A disciplina '{disciplina.nome}' é do ensino {disciplina.ensino} e "
+                    f"não pode ser vinculada a uma turma do ensino {obj.ensino}."
+                ),
+            )
+    if carga_total > 30:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"A carga total do currículo ficou em {carga_total} aulas/semana, "
+                "acima do máximo permitido de 30."
+            ),
+        )
+
     await session.execute(delete(TurmaDisciplina).where(TurmaDisciplina.turma_id == turma_id))
     for item in payload.items:
         session.add(

@@ -1,8 +1,11 @@
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field
 
 
 class DisciplinaBase(BaseModel):
     nome: str = Field(min_length=1, max_length=120)
+    ensino: Literal["fundamental", "medio", "ambos"] = "ambos"
     area: str = Field(default="geral", max_length=60)
     carga_semanal: int = Field(default=2, ge=1, le=10)
     requer_lab: bool = False
@@ -15,6 +18,7 @@ class DisciplinaCreate(DisciplinaBase):
 
 class DisciplinaUpdate(BaseModel):
     nome: str | None = Field(default=None, min_length=1, max_length=120)
+    ensino: Literal["fundamental", "medio", "ambos"] | None = None
     area: str | None = None
     carga_semanal: int | None = Field(default=None, ge=1, le=10)
     requer_lab: bool | None = None

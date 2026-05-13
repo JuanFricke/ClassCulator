@@ -11,6 +11,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, select
 
 from app.core.deps import SessionDep
+from app.core.ensino import infer_turma_ensino
 from app.models import (
     AlocacaoSlot,
     Disciplina,
@@ -110,6 +111,19 @@ async def _contar_entidades(session: SessionDep) -> dict[str, int]:
             await session.execute(select(func.count()).select_from(GradeHoraria))
         ).scalar_one(),
     }
+
+
+async def _mapa_professores_por_disciplina(
+    session: SessionDep, disciplina_ids: list[int] | None = None
+) -> dict[int, list[int]]:
+    stmt = select(ProfessorDisciplina.disciplina_id, ProfessorDisciplina.professor_id)
+    if disciplina_ids:
+        stmt = stmt.where(ProfessorDisciplina.disciplina_id.in_(disciplina_ids))
+    rows = (await session.execute(stmt)).all()
+    mapa: dict[int, list[int]] = {}
+    for disciplina_id, professor_id in rows:
+        mapa.setdefault(disciplina_id, []).append(professor_id)
+    return mapa
 
 
 async def _calcular_prontidao(session: SessionDep, counts: dict) -> dict:
@@ -238,7 +252,7 @@ async def professores_list(request: Request, session: SessionDep):
 @router.get("/professores/novo", response_class=HTMLResponse)
 async def professor_novo(request: Request, session: SessionDep):
     discs = (
-        await session.execute(select(Disciplina).order_by(Disciplina.nome))
+        await session.execute(select(Disciplina).order_by(Disciplina.ensino, Disciplina.nome))
     ).scalars().all()
     return render(
         request,
@@ -256,7 +270,7 @@ async def professor_edit(professor_id: int, request: Request, session: SessionDe
     if prof is None:
         raise HTTPException(status_code=404, detail="Professor não encontrado")
     discs = (
-        await session.execute(select(Disciplina).order_by(Disciplina.nome))
+        await session.execute(select(Disciplina).order_by(Disciplina.ensino, Disciplina.nome))
     ).scalars().all()
     pd_rows = (
         await session.execute(
@@ -291,7 +305,7 @@ async def professor_edit(professor_id: int, request: Request, session: SessionDe
 @router.get("/disciplinas", response_class=HTMLResponse)
 async def disciplinas_list(request: Request, session: SessionDep):
     disciplinas = (
-        await session.execute(select(Disciplina).order_by(Disciplina.nome))
+        await session.execute(select(Disciplina).order_by(Disciplina.ensino, Disciplina.nome))
     ).scalars().all()
     return render(
         request, "disciplinas/list.html", active="disciplinas", disciplinas=disciplinas
@@ -300,7 +314,13 @@ async def disciplinas_list(request: Request, session: SessionDep):
 
 @router.get("/disciplinas/novo", response_class=HTMLResponse)
 async def disciplina_novo(request: Request):
-    return render(request, "disciplinas/form.html", active="disciplinas", disciplina=None)
+    return render(
+        request,
+        "disciplinas/form.html",
+        active="disciplinas",
+        disciplina=None,
+        ensino_options=["fundamental", "medio", "ambos"],
+    )
 
 
 @router.get("/disciplinas/{disciplina_id}", response_class=HTMLResponse)
@@ -308,7 +328,13 @@ async def disciplina_edit(disciplina_id: int, request: Request, session: Session
     disc = await session.get(Disciplina, disciplina_id)
     if disc is None:
         raise HTTPException(status_code=404, detail="Disciplina não encontrada")
-    return render(request, "disciplinas/form.html", active="disciplinas", disciplina=disc)
+    return render(
+        request,
+        "disciplinas/form.html",
+        active="disciplinas",
+        disciplina=disc,
+        ensino_options=["fundamental", "medio", "ambos"],
+    )
 
 
 # --- Salas ----------------------------------------------------------------- #
@@ -363,12 +389,20 @@ async def turmas_list(request: Request, session: SessionDep):
 
 @router.get("/turmas/novo", response_class=HTMLResponse)
 async def turma_novo(request: Request, session: SessionDep):
+    ensino_default = "fundamental"
     discs = (
-        await session.execute(select(Disciplina).order_by(Disciplina.nome))
+        await session.execute(
+            select(Disciplina)
+            .where(Disciplina.ensino.in_([ensino_default, "ambos"]))
+            .order_by(Disciplina.nome)
+        )
     ).scalars().all()
     profs = (
         await session.execute(select(Professor).order_by(Professor.nome))
     ).scalars().all()
+    professores_por_disciplina = await _mapa_professores_por_disciplina(
+        session, [d.id for d in discs]
+    )
     return render(
         request,
         "turmas/form.html",
@@ -379,6 +413,8 @@ async def turma_novo(request: Request, session: SessionDep):
         curriculo=[],
         carga_atual=0,
         carga_alvo=SLOTS_POR_TURMA,
+        professores_por_disciplina=professores_por_disciplina,
+        ensino_options=["fundamental", "medio", "ambos"],
     )
 
 
@@ -387,17 +423,49 @@ async def turma_edit(turma_id: int, request: Request, session: SessionDep):
     turma = await session.get(Turma, turma_id)
     if turma is None:
         raise HTTPException(status_code=404, detail="Turma não encontrada")
+    ensino_turma = infer_turma_ensino(turma.identificador, turma.ensino)
     discs = (
-        await session.execute(select(Disciplina).order_by(Disciplina.nome))
+        await session.execute(
+            select(Disciplina)
+            .where(Disciplina.ensino.in_([ensino_turma, "ambos"]))
+            .order_by(Disciplina.nome)
+        )
     ).scalars().all()
     profs = (
         await session.execute(select(Professor).order_by(Professor.nome))
     ).scalars().all()
-    curriculo = (
+    professores_por_disciplina = await _mapa_professores_por_disciplina(
+        session, [d.id for d in discs]
+    )
+    curriculo_db = (
         await session.execute(select(TurmaDisciplina).where(TurmaDisciplina.turma_id == turma_id))
     ).scalars().all()
+    curriculo_por_disciplina = {c.disciplina_id: c for c in curriculo_db}
+    curriculo = []
+    for disciplina in discs:
+        existing = curriculo_por_disciplina.get(disciplina.id)
+        if existing:
+            curriculo.append(existing)
+            continue
+        professores_ids = professores_por_disciplina.get(disciplina.id, [])
+        professor_padrao = professores_ids[0] if professores_ids else 0
+        curriculo.append(
+            {
+                "disciplina_id": disciplina.id,
+                "professor_id": professor_padrao,
+            }
+        )
     disc_by_id = {d.id: d for d in discs}
-    carga_atual = sum(disc_by_id[c.disciplina_id].carga_semanal for c in curriculo if c.disciplina_id in disc_by_id)
+    def _disciplina_id(item: TurmaDisciplina | dict[str, int]) -> int:
+        if isinstance(item, dict):
+            return item["disciplina_id"]
+        return item.disciplina_id
+
+    carga_atual = sum(
+        disc_by_id[_disciplina_id(c)].carga_semanal
+        for c in curriculo
+        if _disciplina_id(c) in disc_by_id
+    )
     return render(
         request,
         "turmas/form.html",
@@ -408,6 +476,8 @@ async def turma_edit(turma_id: int, request: Request, session: SessionDep):
         curriculo=curriculo,
         carga_atual=carga_atual,
         carga_alvo=SLOTS_POR_TURMA,
+        professores_por_disciplina=professores_por_disciplina,
+        ensino_options=["fundamental", "medio", "ambos"],
     )
 
 

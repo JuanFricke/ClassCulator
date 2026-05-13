@@ -23,6 +23,7 @@ import logging
 from sqlalchemy import delete
 
 from app.core.database import AsyncSessionLocal
+from app.core.ensino import infer_disciplina_ensino, infer_turma_ensino
 from app.models import (
     AlocacaoSlot,
     Disciplina,
@@ -201,6 +202,7 @@ async def seed() -> None:
         for nome, area, carga, lab, teor in DISCIPLINAS:
             obj = Disciplina(
                 nome=nome,
+                ensino=infer_disciplina_ensino(nome, "ambos"),
                 area=area,
                 carga_semanal=carga,
                 requer_lab=lab,
@@ -239,7 +241,12 @@ async def seed() -> None:
         logger.info("Criando turmas + currículo…")
         # EF — todas no semestre "2026/1"
         for ident in EF_TURMAS:
-            turma = Turma(identificador=ident, semestre="2026/1", qtd_alunos=30)
+            turma = Turma(
+                identificador=ident,
+                ensino=infer_turma_ensino(ident, "fundamental"),
+                semestre="2026/1",
+                qtd_alunos=30,
+            )
             session.add(turma)
             await session.flush()
             idx = EF_TURMAS.index(ident)
@@ -255,7 +262,12 @@ async def seed() -> None:
         # EM — manhã e tarde, todas no semestre "2026/1"
         em_all = EM_TURMAS_MANHA + EM_TURMAS_TARDE
         for ident in em_all:
-            turma = Turma(identificador=ident, semestre="2026/1", qtd_alunos=32)
+            turma = Turma(
+                identificador=ident,
+                ensino=infer_turma_ensino(ident, "medio"),
+                semestre="2026/1",
+                qtd_alunos=32,
+            )
             session.add(turma)
             await session.flush()
             idx = em_all.index(ident)

@@ -9,6 +9,7 @@ class Disciplina(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     nome: Mapped[str] = mapped_column(String(120), nullable=False, unique=True)
+    ensino: Mapped[str] = mapped_column(String(20), nullable=False, default="fundamental")
     area: Mapped[str] = mapped_column(String(60), nullable=False, default="geral")
     carga_semanal: Mapped[int] = mapped_column(Integer, nullable=False, default=2)
     requer_lab: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

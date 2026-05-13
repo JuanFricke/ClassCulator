@@ -1,11 +1,26 @@
 const form = document.getElementById("turma-form");
 const feedback = document.getElementById("turma-feedback");
+const identificadorInput = document.getElementById("turma-identificador");
+const ensinoSelect = document.getElementById("turma-ensino");
+
+function inferEnsinoFromTurma(identificador) {
+  const upper = (identificador || "").trim().toUpperCase();
+  if (upper.startsWith("EF")) return "fundamental";
+  if (upper.startsWith("EM")) return "medio";
+  return "ambos";
+}
+
+identificadorInput?.addEventListener("input", () => {
+  if (!ensinoSelect) return;
+  ensinoSelect.value = inferEnsinoFromTurma(identificadorInput.value);
+});
 
 form?.addEventListener("submit", async (event) => {
   event.preventDefault();
   const data = new FormData(form);
   const payload = {
     identificador: data.get("identificador"),
+    ensino: inferEnsinoFromTurma(data.get("identificador")),
     semestre: data.get("semestre"),
     qtd_alunos: parseInt(data.get("qtd_alunos"), 10),
   };
@@ -38,6 +53,46 @@ const cargaLabel = document.getElementById("carga-label");
 const cargaAtual = document.getElementById("carga-atual");
 const cargaStatus = document.getElementById("carga-status");
 const cargaAlvo = parseInt(curriculoForm?.dataset.cargaAlvo || "30", 10);
+
+function parseAllowedProfessorIds(disciplinaSelect) {
+  const opt = disciplinaSelect?.options[disciplinaSelect.selectedIndex];
+  const raw = opt?.dataset.professores || "";
+  return raw
+    .split(",")
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0);
+}
+
+function syncProfessorOptions(row) {
+  const disciplinaSelect = row.querySelector("select[name=disciplina_id]");
+  const professorSelect = row.querySelector("select[name=professor_id]");
+  if (!disciplinaSelect || !professorSelect) return;
+
+  const allowedProfessorIds = new Set(parseAllowedProfessorIds(disciplinaSelect));
+  const options = Array.from(professorSelect.options);
+
+  if (allowedProfessorIds.size === 0) {
+    options.forEach((option) => {
+      option.hidden = true;
+      option.disabled = true;
+    });
+    professorSelect.disabled = true;
+    professorSelect.value = "";
+    return;
+  }
+
+  professorSelect.disabled = false;
+  options.forEach((option) => {
+    const isAllowed = allowedProfessorIds.has(option.value);
+    option.hidden = !isAllowed;
+    option.disabled = !isAllowed;
+  });
+
+  if (!allowedProfessorIds.has(professorSelect.value)) {
+    const firstAllowed = options.find((option) => allowedProfessorIds.has(option.value));
+    professorSelect.value = firstAllowed ? firstAllowed.value : "";
+  }
+}
 
 function recalcularCarga() {
   if (!tableBody) return;
@@ -74,7 +129,11 @@ function bindRow(row) {
     row.remove();
     recalcularCarga();
   });
-  row.querySelector("select[name=disciplina_id]")?.addEventListener("change", recalcularCarga);
+  row.querySelector("select[name=disciplina_id]")?.addEventListener("change", () => {
+    syncProfessorOptions(row);
+    recalcularCarga();
+  });
+  syncProfessorOptions(row);
 }
 
 document.querySelectorAll("#curriculo-table tbody tr").forEach(bindRow);
@@ -91,10 +150,40 @@ addBtn?.addEventListener("click", () => {
 curriculoForm?.addEventListener("submit", async (event) => {
   event.preventDefault();
   const turmaId = curriculoForm.dataset.turmaId;
-  const items = Array.from(tableBody.querySelectorAll("tr")).map((tr) => ({
-    disciplina_id: parseInt(tr.querySelector("select[name=disciplina_id]").value, 10),
-    professor_id: parseInt(tr.querySelector("select[name=professor_id]").value, 10),
-  }));
+  const items = Array.from(tableBody.querySelectorAll("tr")).map((tr) => {
+    const disciplinaId = parseInt(tr.querySelector("select[name=disciplina_id]").value, 10);
+    const professorValue = tr.querySelector("select[name=professor_id]").value;
+    const professorId = parseInt(professorValue, 10);
+    return {
+      disciplina_id: disciplinaId,
+      professor_id: professorId,
+    };
+  });
+
+  if (items.some((item) => Number.isNaN(item.disciplina_id) || Number.isNaN(item.professor_id))) {
+    window.api.feedback(
+      curriculoFeedback,
+      "Cada disciplina deve ter um professor habilitado para ela antes de salvar.",
+      "is-danger",
+    );
+    return;
+  }
+  let cargaTotal = 0;
+  tableBody.querySelectorAll("tr").forEach((tr) => {
+    const disciplinaSelect = tr.querySelector("select[name=disciplina_id]");
+    if (!disciplinaSelect) return;
+    const opt = disciplinaSelect.options[disciplinaSelect.selectedIndex];
+    cargaTotal += parseInt(opt?.dataset.carga || "0", 10);
+  });
+  if (cargaTotal > cargaAlvo) {
+    window.api.feedback(
+      curriculoFeedback,
+      `Carga total acima do máximo: ${cargaTotal}/${cargaAlvo}. Remova disciplinas antes de salvar.`,
+      "is-danger",
+    );
+    return;
+  }
+
   try {
     await window.api.json(`/api/v1/turmas/${turmaId}/curriculo`, {
       method: "PUT",

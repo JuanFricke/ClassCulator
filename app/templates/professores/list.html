@@ -35,7 +35,16 @@
                 <td class="has-text-grey">{{ p.email or "—" }}</td>
                 <td>
                   {% for d in disciplinas_por_prof.get(p.id, []) %}
-                    <span class="tag is-light mr-1">{{ d.nome }}</span>
+                    <span class="tag is-light mr-1">
+                      {{ d.nome }}
+                      {% if d.ensino == "fundamental" %}
+                        (Fund.)
+                      {% elif d.ensino == "medio" %}
+                        (Méd.)
+                      {% else %}
+                        (Ambos)
+                      {% endif %}
+                    </span>
                   {% else %}
                     <span class="has-text-grey">Nenhuma vinculada</span>
                   {% endfor %}

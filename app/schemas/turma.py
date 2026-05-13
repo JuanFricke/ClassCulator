@@ -1,8 +1,11 @@
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field
 
 
 class TurmaBase(BaseModel):
     identificador: str = Field(min_length=1, max_length=40)
+    ensino: Literal["fundamental", "medio", "ambos"] = "fundamental"
     semestre: str = Field(default="2026/1", max_length=20)
     qtd_alunos: int = Field(default=30, ge=1, le=200)
 
@@ -13,6 +16,7 @@ class TurmaCreate(TurmaBase):
 
 class TurmaUpdate(BaseModel):
     identificador: str | None = Field(default=None, min_length=1, max_length=40)
+    ensino: Literal["fundamental", "medio", "ambos"] | None = None
     semestre: str | None = None
     qtd_alunos: int | None = Field(default=None, ge=1, le=200)
 

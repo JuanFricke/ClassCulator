@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
 
 from app.core.deps import SessionDep
+from app.core.ensino import infer_disciplina_ensino
 from app.models import Disciplina
 from app.schemas import DisciplinaCreate, DisciplinaRead, DisciplinaUpdate
 
@@ -16,7 +17,9 @@ async def list_disciplinas(session: SessionDep) -> list[Disciplina]:
 
 @router.post("", response_model=DisciplinaRead, status_code=status.HTTP_201_CREATED)
 async def create_disciplina(payload: DisciplinaCreate, session: SessionDep) -> Disciplina:
-    obj = Disciplina(**payload.model_dump())
+    data = payload.model_dump()
+    data["ensino"] = infer_disciplina_ensino(data["nome"], data.get("ensino") or "ambos")
+    obj = Disciplina(**data)
     session.add(obj)
     await session.commit()
     await session.refresh(obj)
@@ -38,7 +41,10 @@ async def update_disciplina(
     obj = await session.get(Disciplina, disciplina_id)
     if obj is None:
         raise HTTPException(status_code=404, detail="Disciplina não encontrada")
-    for field, value in payload.model_dump(exclude_unset=True).items():
+    data = payload.model_dump(exclude_unset=True)
+    if "nome" in data:
+        data["ensino"] = infer_disciplina_ensino(data["nome"], data.get("ensino") or obj.ensino)
+    for field, value in data.items():
         setattr(obj, field, value)
     await session.commit()
     await session.refresh(obj)

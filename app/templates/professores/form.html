@@ -66,6 +66,13 @@
                 />
                 {{ d.nome }}
                 <span class="tag is-light ml-1">{{ d.area }}</span>
+                {% if d.ensino == "fundamental" %}
+                  <span class="tag is-primary is-light ml-1">Fundamental</span>
+                {% elif d.ensino == "medio" %}
+                  <span class="tag is-link is-light ml-1">Médio</span>
+                {% else %}
+                  <span class="tag is-info is-light ml-1">Ambos</span>
+                {% endif %}
               </label>
             {% endfor %}
           </div>
