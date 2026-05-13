@@ -1,50 +1,65 @@
 {% extends "base.html" %}
+{% from "_macros.html" import icon, page_header, empty_state %}
 
 {% block title %}Disciplinas · ClassCulator{% endblock %}
 
 {% block content %}
-  <div class="level">
-    <div class="level-left"><h1 class="title">Disciplinas</h1></div>
-    <div class="level-right">
-      <a class="button is-link" href="/disciplinas/novo">+ Nova disciplina</a>
-    </div>
+  <nav class="breadcrumb" aria-label="breadcrumbs">
+    <ul>
+      <li><a href="/">Painel</a></li>
+      <li class="is-active"><a href="#" aria-current="page">Disciplinas</a></li>
+    </ul>
+  </nav>
+
+  {{ page_header("Disciplinas", "book", "Estruture carga semanal, tipo e área de conhecimento.", "/disciplinas/novo", "Nova disciplina") }}
+  <div class="notification is-light">
+    Mantenha nomes claros e cargas corretas para evitar bloqueios na geração. <a href="/onboarding">Ver fluxo guiado</a>.
   </div>
 
   {% if disciplinas %}
-    <table class="table is-fullwidth is-striped is-hoverable">
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Nome</th>
-          <th>Área</th>
-          <th>Carga semanal</th>
-          <th>Lab?</th>
-          <th>Teórica?</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for d in disciplinas %}
-          <tr>
-            <td>{{ d.id }}</td>
-            <td><a href="/disciplinas/{{ d.id }}">{{ d.nome }}</a></td>
-            <td><span class="tag is-info is-light">{{ d.area }}</span></td>
-            <td>{{ d.carga_semanal }}</td>
-            <td>{{ "sim" if d.requer_lab else "não" }}</td>
-            <td>{{ "sim" if d.eh_teorica else "não" }}</td>
-            <td class="has-text-right">
-              <a class="button is-small" href="/disciplinas/{{ d.id }}">Editar</a>
-              <button
-                class="button is-small is-danger is-light"
-                data-delete-url="/api/v1/disciplinas/{{ d.id }}"
-                data-confirm="Excluir disciplina {{ d.nome }}?"
-              >Excluir</button>
-            </td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+    <div class="box p-0">
+      <div class="table-container">
+        <table class="table is-fullwidth is-hoverable mb-0">
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>Área</th>
+              <th>Aulas/semana</th>
+              <th>Características</th>
+              <th class="has-text-right">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for d in disciplinas %}
+              <tr>
+                <td><a href="/disciplinas/{{ d.id }}"><strong>{{ d.nome }}</strong></a></td>
+                <td><span class="tag is-info is-light">{{ d.area }}</span></td>
+                <td>{{ d.carga_semanal }}</td>
+                <td>
+                  {% if d.requer_lab %}
+                    <span class="tag is-warning is-light" title="Precisa ser ministrada em laboratório">Laboratório</span>
+                  {% endif %}
+                  {% if d.eh_teorica %}
+                    <span class="tag is-light">Teórica</span>
+                  {% else %}
+                    <span class="tag is-light">Prática</span>
+                  {% endif %}
+                </td>
+                <td class="has-text-right">
+                  <a class="button is-small is-link is-light" href="/disciplinas/{{ d.id }}">Editar</a>
+                  <button
+                    class="button is-small is-danger is-light"
+                    data-delete-url="/api/v1/disciplinas/{{ d.id }}"
+                    data-confirm="Excluir disciplina {{ d.nome }}?"
+                  >Excluir</button>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
   {% else %}
-    <div class="notification">Nenhuma disciplina cadastrada.</div>
+    {{ empty_state("Nenhuma disciplina cadastrada ainda.", "/disciplinas/novo", "Cadastrar a primeira disciplina") }}
   {% endif %}
 {% endblock %}

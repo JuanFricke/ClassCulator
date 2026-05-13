@@ -1,46 +1,68 @@
 {% extends "base.html" %}
+{% from "_macros.html" import icon, page_header, empty_state %}
 
 {% block title %}Turmas · ClassCulator{% endblock %}
 
 {% block content %}
-  <div class="level">
-    <div class="level-left"><h1 class="title">Turmas</h1></div>
-    <div class="level-right">
-      <a class="button is-link" href="/turmas/novo">+ Nova turma</a>
-    </div>
+  <nav class="breadcrumb" aria-label="breadcrumbs">
+    <ul>
+      <li><a href="/">Painel</a></li>
+      <li class="is-active"><a href="#" aria-current="page">Turmas</a></li>
+    </ul>
+  </nav>
+
+  {{ page_header("Turmas", "users", "Gerencie turmas, semestres e currículo.", "/turmas/novo", "Nova turma") }}
+  <div class="notification is-link is-light">
+    <strong>Fluxo recomendado:</strong> complete o currículo de cada turma com {{ carga_alvo }} aulas/semana para liberar a geração sem falhas.
+    <a class="ml-2" href="/onboarding">Abrir configuração guiada</a>
   </div>
 
   {% if turmas %}
-    <table class="table is-fullwidth is-striped is-hoverable">
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Identificador</th>
-          <th>Semestre</th>
-          <th>Alunos</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for t in turmas %}
-          <tr>
-            <td>{{ t.id }}</td>
-            <td><a href="/turmas/{{ t.id }}">{{ t.identificador }}</a></td>
-            <td>{{ t.semestre }}</td>
-            <td>{{ t.qtd_alunos }}</td>
-            <td class="has-text-right">
-              <a class="button is-small" href="/turmas/{{ t.id }}">Editar</a>
-              <button
-                class="button is-small is-danger is-light"
-                data-delete-url="/api/v1/turmas/{{ t.id }}"
-                data-confirm="Excluir turma {{ t.identificador }}?"
-              >Excluir</button>
-            </td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+    <div class="box p-0">
+      <div class="table-container">
+        <table class="table is-fullwidth is-hoverable mb-0">
+          <thead>
+            <tr>
+              <th>Identificador</th>
+              <th>Semestre</th>
+              <th>Alunos</th>
+              <th>Completude</th>
+              <th class="has-text-right">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for t in turmas %}
+              <tr>
+                <td><a href="/turmas/{{ t.id }}"><strong>{{ t.identificador }}</strong></a></td>
+                <td>{{ t.semestre }}</td>
+                <td>{{ t.qtd_alunos }}</td>
+                {% set carga = carga_por_turma.get(t.id, 0) %}
+                <td>
+                  {% if carga == carga_alvo %}
+                    <span class="tag is-success is-light">{{ carga }}/{{ carga_alvo }} completo</span>
+                  {% elif carga == 0 %}
+                    <span class="tag is-warning is-light">Sem currículo</span>
+                  {% elif carga > carga_alvo %}
+                    <span class="tag is-danger is-light">{{ carga }}/{{ carga_alvo }} excesso</span>
+                  {% else %}
+                    <span class="tag is-warning is-light">{{ carga }}/{{ carga_alvo }} incompleto</span>
+                  {% endif %}
+                </td>
+                <td class="has-text-right">
+                  <a class="button is-small is-link is-light" href="/turmas/{{ t.id }}">Editar currículo</a>
+                  <button
+                    class="button is-small is-danger is-light"
+                    data-delete-url="/api/v1/turmas/{{ t.id }}"
+                    data-confirm="Excluir a turma {{ t.identificador }}? Todas as grades já geradas para ela serão mantidas."
+                  >Excluir</button>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
   {% else %}
-    <div class="notification">Nenhuma turma cadastrada.</div>
+    {{ empty_state("Nenhuma turma cadastrada ainda.", "/turmas/novo", "Criar a primeira turma") }}
   {% endif %}
 {% endblock %}

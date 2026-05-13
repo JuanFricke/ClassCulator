@@ -1,53 +1,57 @@
 {% extends "base.html" %}
+{% from "_macros.html" import icon, status_tag, solver_label, quality, page_header, empty_state %}
 
 {% block title %}Grades · ClassCulator{% endblock %}
 
 {% block content %}
-  <div class="level">
-    <div class="level-left"><h1 class="title">Grades geradas</h1></div>
-    <div class="level-right">
-      <a class="button is-link" href="/grade/nova">+ Nova geração</a>
-    </div>
+  <nav class="breadcrumb" aria-label="breadcrumbs">
+    <ul>
+      <li><a href="/">Painel</a></li>
+      <li class="is-active"><a href="#" aria-current="page">Grades geradas</a></li>
+    </ul>
+  </nav>
+
+  {{ page_header("Grades geradas", "calendar", "Histórico de execuções e qualidade das grades.", "/grade/nova", "Gerar nova grade", "play") }}
+  <div class="notification is-light">
+    Use este histórico para comparar versões e abrir rapidamente a grade mais recente.
   </div>
 
   {% if grades %}
-    <table class="table is-fullwidth is-striped is-hoverable">
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Semestre</th>
-          <th>Versão</th>
-          <th>Status</th>
-          <th>Solver</th>
-          <th>Score</th>
-          <th>Tempo (s)</th>
-          <th>Criada em</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for g in grades %}
-          <tr>
-            <td>{{ g.id }}</td>
-            <td>{{ g.semestre }}</td>
-            <td>v{{ g.versao }}</td>
-            <td>
-              <span class="tag is-{% if g.status.value == 'done' %}success{% elif g.status.value == 'failed' %}danger{% elif g.status.value == 'running' %}info{% else %}light{% endif %}">
-                {{ g.status.value }}
-              </span>
-            </td>
-            <td><code>{{ g.solver_usado or '?' }}</code></td>
-            <td>{{ "%.0f"|format(g.score_penalidade) if g.score_penalidade is not none else '—' }}</td>
-            <td>{{ "%.2f"|format(g.tempo_segundos) if g.tempo_segundos is not none else '—' }}</td>
-            <td>{{ g.criado_em.strftime("%d/%m/%Y %H:%M") }}</td>
-            <td><a class="button is-small" href="/grade/{{ g.id }}">Abrir</a></td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  {% else %}
-    <div class="notification">
-      Nenhuma grade gerada ainda. <a href="/grade/nova">Gerar a primeira</a>.
+    <div class="box p-0">
+      <div class="table-container">
+        <table class="table is-fullwidth is-hoverable mb-0">
+          <thead>
+            <tr>
+              <th>Quando</th>
+              <th>Semestre</th>
+              <th>Versão</th>
+              <th>Status</th>
+              <th>Qualidade</th>
+              <th>Modo</th>
+              <th class="has-text-right">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for g in grades %}
+              <tr>
+                <td>{{ g.criado_em.strftime("%d/%m/%Y %H:%M") }}</td>
+                <td><strong>{{ g.semestre }}</strong></td>
+                <td>v{{ g.versao }}</td>
+                <td>{{ status_tag(g.status) }}</td>
+                <td>
+                  {% if g.status.value == 'done' %}{{ quality(g.score_penalidade) }}{% else %}<span class="has-text-grey">—</span>{% endif %}
+                </td>
+                <td class="has-text-grey">{{ solver_label(g.solver_usado) }}</td>
+                <td class="has-text-right">
+                  <a class="button is-small is-link is-light" href="/grade/{{ g.id }}">Abrir</a>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
     </div>
+  {% else %}
+    {{ empty_state("Você ainda não gerou nenhuma grade.", "/grade/nova", "Gerar a primeira grade", "play") }}
   {% endif %}
 {% endblock %}

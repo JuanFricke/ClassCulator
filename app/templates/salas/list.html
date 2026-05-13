@@ -1,50 +1,60 @@
 {% extends "base.html" %}
+{% from "_macros.html" import icon, page_header, empty_state %}
 
 {% block title %}Salas · ClassCulator{% endblock %}
 
 {% block content %}
-  <div class="level">
-    <div class="level-left"><h1 class="title">Salas</h1></div>
-    <div class="level-right">
-      <a class="button is-link" href="/salas/novo">+ Nova sala</a>
-    </div>
+  <nav class="breadcrumb" aria-label="breadcrumbs">
+    <ul>
+      <li><a href="/">Painel</a></li>
+      <li class="is-active"><a href="#" aria-current="page">Salas</a></li>
+    </ul>
+  </nav>
+
+  {{ page_header("Salas e laboratórios", "door", "Controle capacidade e tipo de ambiente.", "/salas/novo", "Novo ambiente") }}
+  <div class="notification is-light">
+    Garanta que laboratórios estejam cadastrados para disciplinas práticas.
   </div>
 
   {% if salas %}
-    <table class="table is-fullwidth is-striped is-hoverable">
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Nome</th>
-          <th>Tipo</th>
-          <th>Capacidade</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for s in salas %}
-          <tr>
-            <td>{{ s.id }}</td>
-            <td><a href="/salas/{{ s.id }}">{{ s.nome }}</a></td>
-            <td>
-              <span class="tag {% if s.tipo.value == 'lab' %}is-warning{% else %}is-light{% endif %}">
-                {{ s.tipo.value }}
-              </span>
-            </td>
-            <td>{{ s.capacidade }}</td>
-            <td class="has-text-right">
-              <a class="button is-small" href="/salas/{{ s.id }}">Editar</a>
-              <button
-                class="button is-small is-danger is-light"
-                data-delete-url="/api/v1/salas/{{ s.id }}"
-                data-confirm="Excluir sala {{ s.nome }}?"
-              >Excluir</button>
-            </td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+    <div class="box p-0">
+      <div class="table-container">
+        <table class="table is-fullwidth is-hoverable mb-0">
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>Tipo</th>
+              <th>Capacidade</th>
+              <th class="has-text-right">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for s in salas %}
+              <tr>
+                <td><a href="/salas/{{ s.id }}"><strong>{{ s.nome }}</strong></a></td>
+                <td>
+                  {% if s.tipo.value == 'lab' %}
+                    <span class="tag is-warning">Laboratório</span>
+                  {% else %}
+                    <span class="tag is-light">Sala comum</span>
+                  {% endif %}
+                </td>
+                <td>{{ s.capacidade }} alunos</td>
+                <td class="has-text-right">
+                  <a class="button is-small is-link is-light" href="/salas/{{ s.id }}">Editar</a>
+                  <button
+                    class="button is-small is-danger is-light"
+                    data-delete-url="/api/v1/salas/{{ s.id }}"
+                    data-confirm="Excluir {{ s.nome }}?"
+                  >Excluir</button>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
   {% else %}
-    <div class="notification">Nenhuma sala cadastrada.</div>
+    {{ empty_state("Nenhuma sala cadastrada ainda.", "/salas/novo", "Cadastrar a primeira sala") }}
   {% endif %}
 {% endblock %}
