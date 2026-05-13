@@ -1,95 +1,182 @@
 {% extends "base.html" %}
+{% from "_macros.html" import icon, status_tag, solver_label, quality %}
 
-{% block title %}Grade #{{ grade.id }} · ClassCulator{% endblock %}
+{% block title %}Grade v{{ grade.versao }} · {{ grade.semestre }}{% endblock %}
 
 {% block content %}
-  <h1 class="title">
-    Grade v{{ grade.versao }} — {{ grade.semestre }}
-    <span class="tag is-large is-{% if grade.status.value == 'done' %}success{% elif grade.status.value == 'failed' %}danger{% elif grade.status.value == 'running' %}info{% else %}light{% endif %}">
-      {{ grade.status.value }}
-    </span>
-  </h1>
+  <nav class="breadcrumb no-print" aria-label="breadcrumbs">
+    <ul>
+      <li><a href="/">Painel</a></li>
+      <li><a href="/grade">Grades</a></li>
+      <li class="is-active"><a href="#" aria-current="page">v{{ grade.versao }} — {{ grade.semestre }}</a></li>
+    </ul>
+  </nav>
 
-  <div class="level">
-    <div class="level-item has-text-centered">
+  <div class="level is-mobile">
+    <div class="level-left">
       <div>
-        <p class="heading">Solver</p>
-        <p class="title is-5"><code>{{ grade.solver_usado or '?' }}</code></p>
-      </div>
-    </div>
-    <div class="level-item has-text-centered">
-      <div>
-        <p class="heading">Score (penalidade)</p>
-        <p class="title is-5">
-          {{ "%.0f"|format(grade.score_penalidade) if grade.score_penalidade is not none else '—' }}
+        <h1 class="title">
+          {{ icon("calendar", "mr-2") }}Grade · {{ grade.semestre }}
+        </h1>
+        <p class="subtitle is-6 has-text-grey">
+          Versão {{ grade.versao }} · {{ status_tag(grade.status) }}
         </p>
       </div>
     </div>
-    <div class="level-item has-text-centered">
-      <div>
-        <p class="heading">Tempo</p>
-        <p class="title is-5">
-          {{ "%.2f"|format(grade.tempo_segundos) if grade.tempo_segundos is not none else '—' }}s
-        </p>
-      </div>
+    <div class="level-right no-print">
+      {% if grade.status.value == 'done' %}
+        <button class="button is-light" onclick="window.print()">
+          {{ icon("print", "mr-1") }} Imprimir
+        </button>
+        <a class="button is-link is-light ml-2" href="/grade/nova">
+          {{ icon("play", "mr-1") }} Gerar outra
+        </a>
+      {% endif %}
     </div>
-    {% if breakdown %}
-      <div class="level-item has-text-centered">
-        <div>
-          <p class="heading">SC1 / SC2 / SC3 / SC4</p>
-          <p class="title is-5">
-            {{ breakdown.SC1 }} / {{ breakdown.SC2 }} / {{ breakdown.SC3 }} / {{ breakdown.get('SC4', 0) }}
+  </div>
+
+  <div class="notification is-light no-print">
+    <strong>Leitura rápida:</strong> filtre por turma para simplificar a análise.
+    Para corrigir dados-base, acesse <a href="/gestao">Gerenciar dados</a>.
+  </div>
+
+  {% if grade.status.value == 'done' %}
+    <div class="columns no-print">
+      <div class="column is-4">
+        <div class="box">
+          <p class="is-size-7 has-text-grey has-text-weight-semibold">Qualidade geral</p>
+          <p class="title is-5 mt-2 mb-2">{{ quality(grade.score_penalidade) }}</p>
+          <p class="is-size-7 has-text-grey">
+            Quanto menor o número de janelas e quebras de bloco, melhor é a grade.
           </p>
         </div>
       </div>
-    {% endif %}
-  </div>
+      <div class="column is-4">
+        <div class="box">
+          <p class="is-size-7 has-text-grey has-text-weight-semibold">Modo de geração</p>
+          <p class="title is-5 mt-2 mb-2">{{ solver_label(grade.solver_usado) }}</p>
+          <p class="is-size-7 has-text-grey">
+            Cálculo feito em
+            {{ "%.1f"|format(grade.tempo_segundos) if grade.tempo_segundos is not none else '—' }}s.
+          </p>
+        </div>
+      </div>
+      {% if breakdown %}
+      <div class="column is-4">
+        <div class="box">
+          <p class="is-size-7 has-text-grey has-text-weight-semibold">Detalhes da otimização</p>
+          <ul class="mt-2" style="list-style: none; padding: 0;">
+            <li><strong>{{ breakdown.get('SC4', 0) }}</strong> · prof. com a mesma turma em períodos quebrados</li>
+            <li><strong>{{ breakdown.SC1 }}</strong> · janelas vazias do professor no dia</li>
+            <li><strong>{{ breakdown.SC3 }}</strong> · blocos de 3+ aulas teóricas seguidas</li>
+            <li><strong>{{ breakdown.SC2 }}</strong> · disciplinas da mesma área coladas</li>
+          </ul>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  {% endif %}
 
   {% if grade.status.value == 'failed' %}
-    <article class="message is-danger">
-      <div class="message-header"><p>Falha na geração</p></div>
-      <div class="message-body"><pre>{{ grade.log or "Sem detalhes" }}</pre></div>
+    <article class="notification is-danger">
+      <p class="title is-5 mt-0">
+        {{ icon("warning", "mr-1") }} Não foi possível gerar a grade
+      </p>
+      <p>{{ grade.log.splitlines()[0] if grade.log else "Sem detalhes." }}</p>
+      <details class="mt-2">
+        <summary>Ver registro completo</summary>
+        <pre class="mt-2">{{ grade.log or "—" }}</pre>
+      </details>
     </article>
   {% endif %}
 
-  {% for tid, turma in turmas.items() %}
-    <h2 class="title is-4 mt-5">Turma {{ turma.identificador }}</h2>
-    <table class="table is-bordered is-fullwidth has-text-centered grade-table">
-      <thead>
-        <tr>
-          <th></th>
-          {% for slot in SLOTS %}
-            <th>{{ SLOT_LABELS[slot] }}</th>
-          {% endfor %}
-        </tr>
-      </thead>
-      <tbody>
-        {% for dia in DIAS %}
-          <tr>
-            <th class="has-background-light">{{ DIAS_LABELS[dia] }}</th>
-            {% for slot in SLOTS %}
-              {% set cell = grades_por_turma[tid][dia][slot] %}
-              <td class="grade-cell" data-area="{{ cell.disciplina.area if cell else '' }}">
-                {% if cell %}
-                  <strong>{{ cell.disciplina.nome }}</strong><br />
-                  <small>{{ cell.professor.nome }}</small>
-                  {% if cell.sala %}<br /><small class="has-text-grey">{{ cell.sala.nome }}</small>{% endif %}
-                {% else %}
-                  <span class="has-text-grey-light">—</span>
-                {% endif %}
-              </td>
-            {% endfor %}
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  {% endfor %}
+  {% if grade.status.value in ('pending', 'running') %}
+    <article class="notification is-info is-light">
+      <p class="title is-5 mt-0">
+        {{ icon("play", "mr-1") }} A grade está sendo gerada…
+      </p>
+      <progress class="progress is-info is-medium" max="100"></progress>
+      <p class="has-text-grey">Esta página atualiza automaticamente quando o cálculo terminar.</p>
+    </article>
+  {% endif %}
 
-  {% if grade.log %}
-    <details class="mt-5">
-      <summary><strong>Log do solver</strong></summary>
-      <pre class="mt-2">{{ grade.log }}</pre>
-    </details>
+  {% if grade.status.value == 'done' %}
+    <div class="box no-print mt-4">
+      <div class="field is-horizontal">
+        <div class="field-label is-normal">
+          <label class="label" for="turma-filter">{{ icon("filter", "mr-1") }}Visualizar turma:</label>
+        </div>
+        <div class="field-body">
+          <div class="field">
+            <div class="control">
+              <div class="select is-fullwidth">
+                <select id="turma-filter">
+                  <option value="__all__">Todas as turmas</option>
+                  {% for turma in turmas_ordenadas %}
+                    <option value="turma-{{ turma.id }}">{{ turma.identificador }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="area-legend mt-2">
+        <strong class="mr-2 has-text-grey">Legenda de áreas:</strong>
+        <span><span class="swatch" style="background:#e3f2ff;"></span>Exatas</span>
+        <span><span class="swatch" style="background:#fff3e0;"></span>Humanas</span>
+        <span><span class="swatch" style="background:#e8f5e9;"></span>Biológicas</span>
+        <span><span class="swatch" style="background:#fce4ec;"></span>Linguagens</span>
+        <span><span class="swatch" style="background:#f5f5f5;"></span>Geral</span>
+      </div>
+    </div>
+
+    {% for turma in turmas_ordenadas %}
+      <section class="turma-block mt-5" data-turma-id="turma-{{ turma.id }}">
+        <h2 class="title is-4">
+          {{ icon("users", "mr-2") }}Turma {{ turma.identificador }}
+        </h2>
+        <div class="table-container">
+          <table class="table is-bordered is-fullwidth has-text-centered grade-table">
+            <thead>
+              <tr>
+                <th></th>
+                {% for dia in DIAS %}
+                  <th>{{ DIAS_LABELS[dia] }}</th>
+                {% endfor %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for slot in SLOTS %}
+                <tr>
+                  <th class="grade-day" scope="row">{{ SLOT_LABELS[slot] }}</th>
+                  {% for dia in DIAS %}
+                    {% set cell = grades_por_turma[turma.id][dia][slot] %}
+                    <td class="grade-cell" data-area="{{ cell.disciplina.area if cell else '' }}">
+                      {% if cell %}
+                        <strong>{{ cell.disciplina.nome }}</strong>
+                        <span>{{ cell.professor.nome }}</span>
+                        {% if cell.sala %}<span class="cell-room">{{ cell.sala.nome }}</span>{% endif %}
+                      {% else %}
+                        <span class="has-text-grey-light">—</span>
+                      {% endif %}
+                    </td>
+                  {% endfor %}
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    {% endfor %}
+
+    {% if grade.log %}
+      <details class="mt-5 no-print">
+        <summary class="has-text-grey">Registro técnico da geração</summary>
+        <pre class="mt-2" style="font-size: 0.78rem; max-height: 16rem; overflow: auto;">{{ grade.log }}</pre>
+      </details>
+    {% endif %}
   {% endif %}
 {% endblock %}
 
