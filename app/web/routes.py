@@ -23,7 +23,7 @@ from app.models import (
     TurmaDisciplina,
 )
 from app.solver.constraints import calcular_score
-from app.solver.domain import DIAS, SLOTS_DIA
+from app.solver.domain import DIAS, SLOTS_DIA, SLOTS_POR_TURMA
 
 TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
@@ -50,7 +50,54 @@ def render(request: Request, template_name: str, /, **context: Any) -> HTMLRespo
 
 @router.get("/", response_class=HTMLResponse)
 async def home(request: Request, session: SessionDep):
-    counts = {
+    counts = await _contar_entidades(session)
+    ultima = (
+        await session.execute(
+            select(GradeHoraria).order_by(GradeHoraria.criado_em.desc()).limit(1)
+        )
+    ).scalar_one_or_none()
+
+    readiness = await _calcular_prontidao(session, counts)
+
+    return render(
+        request,
+        "home.html",
+        active="home",
+        counts=counts,
+        ultima=ultima,
+        readiness=readiness,
+        slots_por_turma=SLOTS_POR_TURMA,
+    )
+
+
+@router.get("/onboarding", response_class=HTMLResponse)
+async def onboarding(request: Request, session: SessionDep):
+    counts = await _contar_entidades(session)
+    readiness = await _calcular_prontidao(session, counts)
+    return render(
+        request,
+        "onboarding.html",
+        active="onboarding",
+        counts=counts,
+        readiness=readiness,
+    )
+
+
+@router.get("/gestao", response_class=HTMLResponse)
+async def gestao(request: Request, session: SessionDep):
+    counts = await _contar_entidades(session)
+    readiness = await _calcular_prontidao(session, counts)
+    return render(
+        request,
+        "gestao.html",
+        active="gestao",
+        counts=counts,
+        readiness=readiness,
+    )
+
+
+async def _contar_entidades(session: SessionDep) -> dict[str, int]:
+    return {
         "professores": (
             await session.execute(select(func.count()).select_from(Professor))
         ).scalar_one(),
@@ -63,12 +110,106 @@ async def home(request: Request, session: SessionDep):
             await session.execute(select(func.count()).select_from(GradeHoraria))
         ).scalar_one(),
     }
-    ultima = (
-        await session.execute(
-            select(GradeHoraria).order_by(GradeHoraria.criado_em.desc()).limit(1)
+
+
+async def _calcular_prontidao(session: SessionDep, counts: dict) -> dict:
+    """Resume o estado da configuração para o painel inicial.
+
+    Retorna uma estrutura com flags por etapa e, se houver turmas, a carga
+    atual e o que falta para cada uma fechar os SLOTS_POR_TURMA períodos.
+    """
+
+    turmas_ok = True
+    turmas_problema: list[dict] = []
+    if counts["turmas"] > 0:
+        cargas = await session.execute(
+            select(
+                Turma.id,
+                Turma.identificador,
+                func.coalesce(func.sum(Disciplina.carga_semanal), 0).label("carga"),
+            )
+            .join(TurmaDisciplina, TurmaDisciplina.turma_id == Turma.id, isouter=True)
+            .join(Disciplina, Disciplina.id == TurmaDisciplina.disciplina_id, isouter=True)
+            .group_by(Turma.id, Turma.identificador)
+            .order_by(Turma.identificador)
         )
-    ).scalar_one_or_none()
-    return render(request, "home.html", active="home", counts=counts, ultima=ultima)
+        for row in cargas.all():
+            falta = SLOTS_POR_TURMA - int(row.carga)
+            if falta != 0:
+                turmas_ok = False
+                turmas_problema.append(
+                    {
+                        "id": row.id,
+                        "identificador": row.identificador,
+                        "carga": int(row.carga),
+                        "falta": falta,
+                    }
+                )
+
+    etapas = [
+        {
+            "id": "disciplinas",
+            "ok": counts["disciplinas"] > 0,
+            "titulo": "Cadastrar disciplinas",
+            "detalhe": (
+                f"{counts['disciplinas']} disciplina(s) cadastrada(s)."
+                if counts["disciplinas"] > 0
+                else "Nenhuma disciplina cadastrada ainda."
+            ),
+            "action_url": "/disciplinas/novo" if counts["disciplinas"] == 0 else "",
+            "action_label": "Cadastrar",
+        },
+        {
+            "id": "professores",
+            "ok": counts["professores"] > 0,
+            "titulo": "Cadastrar professores",
+            "detalhe": (
+                f"{counts['professores']} professor(es) com horários definidos."
+                if counts["professores"] > 0
+                else "Nenhum professor cadastrado ainda."
+            ),
+            "action_url": "/professores/novo" if counts["professores"] == 0 else "",
+            "action_label": "Cadastrar",
+        },
+        {
+            "id": "salas",
+            "ok": counts["salas"] > 0,
+            "titulo": "Cadastrar salas e laboratórios",
+            "detalhe": (
+                f"{counts['salas']} ambiente(s) cadastrado(s)."
+                if counts["salas"] > 0
+                else "Nenhuma sala cadastrada ainda."
+            ),
+            "action_url": "/salas/novo" if counts["salas"] == 0 else "",
+            "action_label": "Cadastrar",
+        },
+        {
+            "id": "turmas",
+            "ok": counts["turmas"] > 0 and turmas_ok,
+            "titulo": "Definir turmas e currículos",
+            "detalhe": _detalhe_turmas(counts["turmas"], turmas_problema),
+            "action_url": "/turmas" if turmas_problema else ("/turmas/novo" if counts["turmas"] == 0 else ""),
+            "action_label": "Ajustar" if turmas_problema else "Cadastrar",
+        },
+    ]
+    tudo_pronto = all(e["ok"] for e in etapas)
+    return {
+        "etapas": etapas,
+        "tudo_pronto": tudo_pronto,
+        "turmas_problema": turmas_problema,
+    }
+
+
+def _detalhe_turmas(qtd_turmas: int, problemas: list[dict]) -> str:
+    if qtd_turmas == 0:
+        return "Nenhuma turma cadastrada ainda."
+    if not problemas:
+        return f"{qtd_turmas} turma(s) com currículo completo (30 aulas/semana)."
+    nomes = ", ".join(
+        f"{p['identificador']} ({p['carga']}/{SLOTS_POR_TURMA})" for p in problemas[:4]
+    )
+    extra = f" +{len(problemas) - 4} outras" if len(problemas) > 4 else ""
+    return f"{len(problemas)} turma(s) com currículo incompleto: {nomes}{extra}."
 
 
 # --- Professores ----------------------------------------------------------- #
@@ -200,7 +341,24 @@ async def turmas_list(request: Request, session: SessionDep):
     turmas = (
         await session.execute(select(Turma).order_by(Turma.identificador))
     ).scalars().all()
-    return render(request, "turmas/list.html", active="turmas", turmas=turmas)
+    cargas = await session.execute(
+        select(
+            Turma.id,
+            func.coalesce(func.sum(Disciplina.carga_semanal), 0).label("carga"),
+        )
+        .join(TurmaDisciplina, TurmaDisciplina.turma_id == Turma.id, isouter=True)
+        .join(Disciplina, Disciplina.id == TurmaDisciplina.disciplina_id, isouter=True)
+        .group_by(Turma.id)
+    )
+    carga_por_turma = {row.id: int(row.carga) for row in cargas}
+    return render(
+        request,
+        "turmas/list.html",
+        active="turmas",
+        turmas=turmas,
+        carga_por_turma=carga_por_turma,
+        carga_alvo=SLOTS_POR_TURMA,
+    )
 
 
 @router.get("/turmas/novo", response_class=HTMLResponse)
@@ -219,6 +377,8 @@ async def turma_novo(request: Request, session: SessionDep):
         disciplinas=discs,
         professores=profs,
         curriculo=[],
+        carga_atual=0,
+        carga_alvo=SLOTS_POR_TURMA,
     )
 
 
@@ -236,6 +396,8 @@ async def turma_edit(turma_id: int, request: Request, session: SessionDep):
     curriculo = (
         await session.execute(select(TurmaDisciplina).where(TurmaDisciplina.turma_id == turma_id))
     ).scalars().all()
+    disc_by_id = {d.id: d for d in discs}
+    carga_atual = sum(disc_by_id[c.disciplina_id].carga_semanal for c in curriculo if c.disciplina_id in disc_by_id)
     return render(
         request,
         "turmas/form.html",
@@ -244,6 +406,8 @@ async def turma_edit(turma_id: int, request: Request, session: SessionDep):
         disciplinas=discs,
         professores=profs,
         curriculo=curriculo,
+        carga_atual=carga_atual,
+        carga_alvo=SLOTS_POR_TURMA,
     )
 
 
@@ -264,7 +428,24 @@ async def grade_nova(request: Request, session: SessionDep):
         await session.execute(select(Turma.semestre).distinct().order_by(Turma.semestre))
     ).all()
     semestres_list = [s[0] for s in semestres] or ["2026/1"]
-    return render(request, "grade/nova.html", active="grade", semestres=semestres_list)
+
+    # Pré-checagem: avisar antes de submeter se algum currículo está incompleto.
+    counts = {
+        "professores": (await session.execute(select(func.count()).select_from(Professor))).scalar_one(),
+        "turmas": (await session.execute(select(func.count()).select_from(Turma))).scalar_one(),
+        "disciplinas": (await session.execute(select(func.count()).select_from(Disciplina))).scalar_one(),
+        "salas": (await session.execute(select(func.count()).select_from(Sala))).scalar_one(),
+        "grades": 0,
+    }
+    readiness = await _calcular_prontidao(session, counts)
+
+    return render(
+        request,
+        "grade/nova.html",
+        active="grade",
+        semestres=semestres_list,
+        readiness=readiness,
+    )
 
 
 @router.get("/grade/{grade_id}", response_class=HTMLResponse)
@@ -320,12 +501,15 @@ async def grade_detail(grade_id: int, request: Request, session: SessionDep):
         except Exception:  # noqa: BLE001
             breakdown = None
 
+    turmas_ordenadas = sorted(turmas.values(), key=lambda t: t.identificador)
+
     return render(
         request,
         "grade/detail.html",
         active="grade",
         grade=grade,
         turmas=turmas,
+        turmas_ordenadas=turmas_ordenadas,
         grades_por_turma=grades_por_turma,
         breakdown=breakdown,
     )

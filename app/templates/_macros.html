@@ -1,0 +1,170 @@
+{# Macros reutilizáveis para tradução e visual amigável dos termos técnicos. #}
+
+{% macro icon(name, classes="") -%}
+  {%- set svgs = {
+    "calendar":     '<path d="M3 4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4Zm2 4v8h10V8H5Zm2-5v2m6-2v2"/>',
+    "teacher":      '<path d="M10 11a4 4 0 1 0-4-4 4 4 0 0 0 4 4Zm0 1c-3.3 0-7 1.7-7 5v1h14v-1c0-3.3-3.7-5-7-5Z"/>',
+    "users":        '<path d="M7 9a3 3 0 1 0-3-3 3 3 0 0 0 3 3Zm6 0a3 3 0 1 0-3-3 3 3 0 0 0 3 3ZM2 16v1h10v-1c0-2.5-3-4-5-4s-5 1.5-5 4Zm10-2.7c1.4-.7 3.1-1.3 4.5-1.3 2.5 0 5 1.5 5 4v1h-7.5"/>',
+    "book":         '<path d="M4 4h10a3 3 0 0 1 3 3v10H7a3 3 0 0 1-3-3V4Zm0 0v10a3 3 0 0 0 3 3"/>',
+    "door":         '<path d="M5 3h8v14H5V3Zm6 7v1"/>',
+    "play":         '<path d="M5 4l11 6-11 6V4Z"/>',
+    "check":        '<path d="M4 10l4 4 8-8"/>',
+    "warning":      '<path d="M10 3 2 17h16L10 3Zm0 5v4m0 2v.5"/>',
+    "cross":        '<path d="M5 5l10 10M15 5 5 15"/>',
+    "info":         '<circle cx="10" cy="10" r="7"/><path d="M10 9v5m0-8v.5"/>',
+    "star":         '<path d="m10 2 2.4 5 5.6.8-4 3.9.9 5.5L10 14.6 5.1 17.2 6 11.7 2 7.8l5.6-.8L10 2Z"/>',
+    "print":        '<path d="M6 4h8v4H6V4Zm0 12h8v-5H6v5ZM3 7h14v6h-3v-2H6v2H3V7Z"/>',
+    "filter":       '<path d="M3 5h14L12 11v5l-4 1v-6L3 5Z"/>',
+    "wand":         '<path d="m4 16 11-11 1 1L5 17l-1-1Zm7-9 2 2M3 3v2m0 0H1m2 0h2M14 3v2m0-2h-2m2 0h2"/>'
+  } -%}
+  <svg class="cc-icon {{ classes }}" viewBox="0 0 20 20" fill="none" stroke="currentColor"
+       stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    {{ svgs.get(name, '') | safe }}
+  </svg>
+{%- endmacro %}
+
+{% macro page_header(title, icon_name="", subtitle="", action_href="", action_label="", action_icon="", action_kind="is-link") -%}
+  <div class="level mb-4">
+    <div class="level-left">
+      <div>
+        <h1 class="title mb-1">
+          {% if icon_name %}{{ icon(icon_name, "mr-2") }}{% endif %}{{ title }}
+        </h1>
+        {% if subtitle %}
+          <p class="subtitle is-6 has-text-grey mb-0">{{ subtitle }}</p>
+        {% endif %}
+      </div>
+    </div>
+    {% if action_href and action_label %}
+      <div class="level-right">
+        <a class="button {{ action_kind }}" href="{{ action_href }}">
+          {% if action_icon %}{{ icon(action_icon, "mr-1") }}{% endif %} {{ action_label }}
+        </a>
+      </div>
+    {% endif %}
+  </div>
+{%- endmacro %}
+
+{% macro empty_state(message, cta_href="", cta_label="", cta_icon="", cta_kind="is-link") -%}
+  <div class="box has-text-centered">
+    <p class="has-text-grey mb-3">{{ message }}</p>
+    {% if cta_href and cta_label %}
+      <a class="button {{ cta_kind }}" href="{{ cta_href }}">
+        {% if cta_icon %}{{ icon(cta_icon, "mr-1") }}{% endif %} {{ cta_label }}
+      </a>
+    {% endif %}
+  </div>
+{%- endmacro %}
+
+{% macro step_indicator(current_step=1) -%}
+  {% set steps = [
+    {"id": 1, "label": "Turmas", "href": "/turmas/novo"},
+    {"id": 2, "label": "Disciplinas", "href": "/disciplinas/novo"},
+    {"id": 3, "label": "Professores", "href": "/professores/novo"},
+    {"id": 4, "label": "Salas", "href": "/salas/novo"},
+    {"id": 5, "label": "Revisar e gerar", "href": "/grade/nova"},
+  ] %}
+  <nav class="steps-nav mb-5" aria-label="Etapas de configuração">
+    {% for step in steps %}
+      {% set status_class = "is-upcoming" %}
+      {% if step.id < current_step %}{% set status_class = "is-done" %}{% endif %}
+      {% if step.id == current_step %}{% set status_class = "is-current" %}{% endif %}
+      <a href="{{ step.href }}" class="steps-item {{ status_class }}">
+        <span class="steps-dot">{{ step.id }}</span>
+        <span class="steps-label">{{ step.label }}</span>
+      </a>
+    {% endfor %}
+  </nav>
+{%- endmacro %}
+
+{% macro context_help(title, text, icon_name="info", kind="is-info") -%}
+  <article class="message {{ kind }} is-small">
+    <div class="message-header">
+      <p>{{ icon(icon_name, "mr-1") }} {{ title }}</p>
+    </div>
+    <div class="message-body">
+      {{ text }}
+    </div>
+  </article>
+{%- endmacro %}
+
+{% macro readiness_card(readiness) -%}
+  <div class="box">
+    <h3 class="title is-6 mb-3">{{ icon("check", "mr-1") }} Status da configuração</h3>
+    {% for etapa in readiness.etapas %}
+      {{ readiness_row(etapa.ok, etapa.titulo, etapa.detalhe, etapa.action_url, etapa.action_label) }}
+    {% endfor %}
+    <div class="mt-3">
+      {% if readiness.tudo_pronto %}
+        <span class="tag is-success is-light">Pronto para gerar grade</span>
+      {% else %}
+        <span class="tag is-warning is-light">Ainda há pendências</span>
+      {% endif %}
+    </div>
+  </div>
+{%- endmacro %}
+
+{# Tradução do status do solver para algo legível. #}
+{% macro status_tag(status, large=false) -%}
+  {%- set mapa = {
+    "pending": ("Aguardando",  "is-light",   "info"),
+    "running": ("Em andamento", "is-info",    "play"),
+    "done":    ("Pronta",       "is-success", "check"),
+    "failed":  ("Erro",         "is-danger",  "warning"),
+  } -%}
+  {%- set valor = status.value if status.__class__.__name__ != 'str' else status -%}
+  {%- set tupla = mapa.get(valor, (valor, "is-light", "info")) -%}
+  <span class="tag {{ tupla[1] }} {% if large %}is-medium{% endif %}">
+    {{ icon(tupla[2], "mr-1") }} {{ tupla[0] }}
+  </span>
+{%- endmacro %}
+
+{# Mostra o modo de geração em linguagem amigável. #}
+{% macro solver_label(solver_id) -%}
+  {%- if solver_id == "cpsat" -%}
+    Modo otimizado
+  {%- elif solver_id == "classic" -%}
+    Modo rápido
+  {%- else -%}
+    {{ solver_id or "—" }}
+  {%- endif -%}
+{%- endmacro %}
+
+{# Converte um score numérico em uma avaliação amigável (estrelas + label). #}
+{% macro quality(score) -%}
+  {%- if score is none -%}
+    {%- set tier = ("—", 0, "has-text-grey-light") -%}
+  {%- elif score == 0 -%}
+    {%- set tier = ("Excelente",     5, "has-text-success") -%}
+  {%- elif score < 2000 -%}
+    {%- set tier = ("Muito boa",     4, "has-text-success") -%}
+  {%- elif score < 6000 -%}
+    {%- set tier = ("Boa",           3, "has-text-link") -%}
+  {%- elif score < 15000 -%}
+    {%- set tier = ("Regular",       2, "has-text-warning") -%}
+  {%- else -%}
+    {%- set tier = ("Precisa ajustes", 1, "has-text-danger") -%}
+  {%- endif -%}
+  <span class="quality-badge {{ tier[2] }}">
+    <span class="quality-stars" aria-hidden="true">
+      {% for i in range(5) %}{% if i < tier[1] %}★{% else %}<span class="has-text-grey-light">★</span>{% endif %}{% endfor %}
+    </span>
+    <span class="quality-label">{{ tier[0] }}</span>
+  </span>
+{%- endmacro %}
+
+{# Linha de checagem da prontidão. #}
+{% macro readiness_row(ok, titulo, detalhe="", action_url="", action_label="Resolver") -%}
+  <div class="readiness-row {{ 'is-ok' if ok else 'is-pending' }}">
+    <span class="readiness-icon">
+      {% if ok %}{{ icon("check") }}{% else %}{{ icon("warning") }}{% endif %}
+    </span>
+    <div class="readiness-text">
+      <strong>{{ titulo }}</strong>
+      {% if detalhe %}<small class="has-text-grey">{{ detalhe }}</small>{% endif %}
+    </div>
+    {% if not ok and action_url %}
+      <a class="button is-small is-link is-light" href="{{ action_url }}">{{ action_label }}</a>
+    {% endif %}
+  </div>
+{%- endmacro %}

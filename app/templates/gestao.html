@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_header, readiness_card %}
+
+{% block title %}Painel de gestão · ClassCulator{% endblock %}
+
+{% block content %}
+  <nav class="breadcrumb" aria-label="breadcrumbs">
+    <ul>
+      <li><a href="/">Painel</a></li>
+      <li class="is-active"><a href="#" aria-current="page">Gerenciar dados</a></li>
+    </ul>
+  </nav>
+
+  {{ page_header("Gerenciar dados", "info", "Acesse rapidamente os cadastros e faça manutenção contínua.") }}
+
+  <div class="columns">
+    <div class="column is-8">
+      <div class="columns is-multiline">
+        <div class="column is-6">
+          <a class="box is-block" href="/turmas">
+            <p class="is-size-7 has-text-grey has-text-weight-semibold">{{ icon("users", "mr-1") }} Turmas</p>
+            <p class="title is-4 mt-2 mb-1">{{ counts.turmas }}</p>
+            <p class="has-text-grey is-size-7">Cadastro e currículo por turma.</p>
+          </a>
+        </div>
+        <div class="column is-6">
+          <a class="box is-block" href="/disciplinas">
+            <p class="is-size-7 has-text-grey has-text-weight-semibold">{{ icon("book", "mr-1") }} Disciplinas</p>
+            <p class="title is-4 mt-2 mb-1">{{ counts.disciplinas }}</p>
+            <p class="has-text-grey is-size-7">Carga, área e exigência de laboratório.</p>
+          </a>
+        </div>
+        <div class="column is-6">
+          <a class="box is-block" href="/professores">
+            <p class="is-size-7 has-text-grey has-text-weight-semibold">{{ icon("teacher", "mr-1") }} Professores</p>
+            <p class="title is-4 mt-2 mb-1">{{ counts.professores }}</p>
+            <p class="has-text-grey is-size-7">Vínculos com disciplinas e disponibilidade.</p>
+          </a>
+        </div>
+        <div class="column is-6">
+          <a class="box is-block" href="/salas">
+            <p class="is-size-7 has-text-grey has-text-weight-semibold">{{ icon("door", "mr-1") }} Salas</p>
+            <p class="title is-4 mt-2 mb-1">{{ counts.salas }}</p>
+            <p class="has-text-grey is-size-7">Tipos de ambiente e capacidade.</p>
+          </a>
+        </div>
+      </div>
+      <div class="buttons">
+        <a class="button is-link" href="/grade/nova">{{ icon("play", "mr-1") }} Gerar grade</a>
+        <a class="button is-light" href="/grade">Ver histórico</a>
+      </div>
+    </div>
+    <div class="column is-4">
+      {{ readiness_card(readiness) }}
+    </div>
+  </div>
+{% endblock %}

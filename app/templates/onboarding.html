@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, step_indicator, context_help, readiness_card, page_header %}
+
+{% block title %}Configuração guiada · ClassCulator{% endblock %}
+
+{% block content %}
+  <nav class="breadcrumb" aria-label="breadcrumbs">
+    <ul>
+      <li><a href="/">Painel</a></li>
+      <li class="is-active"><a href="#" aria-current="page">Configuração guiada</a></li>
+    </ul>
+  </nav>
+
+  {{ page_header("Configuração guiada", "wand", "Siga as etapas abaixo para inserir os dados iniciais da escola.") }}
+  {{ step_indicator(1) }}
+
+  <div class="columns">
+    <div class="column is-8">
+      {{ context_help("Como usar", "Faça o cadastro na ordem sugerida. Isso reduz erros e evita retrabalho na hora de gerar a grade.") }}
+      <div class="box">
+        <h2 class="title is-6 mb-3">Etapas de configuração</h2>
+        <div class="content mb-0">
+          <ol>
+            <li><strong>Turmas:</strong> crie as turmas e informe o semestre.</li>
+            <li><strong>Disciplinas:</strong> cadastre área, carga semanal e tipo.</li>
+            <li><strong>Professores:</strong> vincule disciplinas e horários disponíveis.</li>
+            <li><strong>Salas:</strong> adicione ambientes e capacidade.</li>
+            <li><strong>Revisão:</strong> confira pendências e gere a primeira grade.</li>
+          </ol>
+        </div>
+      </div>
+      <div class="buttons">
+        <a class="button is-link" href="/turmas/novo">{{ icon("users", "mr-1") }} Começar por turmas</a>
+        <a class="button is-light" href="/gestao">Abrir painel de gestão</a>
+      </div>
+    </div>
+    <div class="column is-4">
+      {{ readiness_card(readiness) }}
+    </div>
+  </div>
+{% endblock %}

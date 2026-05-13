@@ -1,89 +1,155 @@
 {% extends "base.html" %}
+{% from "_macros.html" import icon, status_tag, quality, readiness_row %}
 
 {% block content %}
-  <section class="hero is-info is-bold">
+  <section class="hero is-link mb-4">
     <div class="hero-body">
-      <p class="title">ClassCulator</p>
-      <p class="subtitle">
-        Geração automática de grade horária escolar com Programação por Restrições
-        (CP-SAT) ou Backtracking + Hill Climbing — selecionável por execução.
-      </p>
+      <div class="columns is-vcentered">
+        <div class="column">
+          <h1 class="title is-2 has-text-white">Organize os dados e gere a grade com segurança</h1>
+          <p class="subtitle is-5 has-text-white-bis">
+            Siga o fluxo guiado para a primeira configuração ou acesse a gestão para manutenção diária.
+          </p>
+        </div>
+        <div class="column is-narrow has-text-right">
+          <a class="button is-large is-light" href="/onboarding">
+            {{ icon("wand", "mr-2") }} Configurar pela primeira vez
+          </a>
+        </div>
+      </div>
     </div>
   </section>
 
-  <div class="columns is-multiline mt-5">
-    <div class="column is-one-fifth">
-      <a class="box has-text-centered" href="/professores">
-        <p class="heading">Professores</p>
-        <p class="title">{{ counts.professores }}</p>
-      </a>
+  <div class="columns mb-4">
+    <div class="column is-6">
+      <div class="box">
+        <h2 class="title is-5">{{ icon("wand", "mr-1") }} Primeiro acesso</h2>
+        <p class="has-text-grey mb-3">
+          Ideal para quem está iniciando. O sistema orienta o cadastro na ordem correta e mostra o que falta.
+        </p>
+        <a class="button is-link" href="/onboarding">Abrir configuração guiada</a>
+      </div>
     </div>
-    <div class="column is-one-fifth">
+    <div class="column is-6">
+      <div class="box">
+        <h2 class="title is-5">{{ icon("check", "mr-1") }} Uso diário</h2>
+        <p class="has-text-grey mb-3">
+          Para manutenção rápida de dados já existentes e ajustes antes de novas gerações.
+        </p>
+        <a class="button is-light" href="/gestao">Abrir painel de gestão</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="columns is-multiline mt-2">
+    <div class="column is-3">
       <a class="box has-text-centered" href="/turmas">
-        <p class="heading">Turmas</p>
-        <p class="title">{{ counts.turmas }}</p>
+        <p class="is-size-7 has-text-grey has-text-weight-semibold">{{ icon("users", "mr-1") }} Turmas</p>
+        <p class="title is-3 mt-2 mb-0">{{ counts.turmas }}</p>
       </a>
     </div>
-    <div class="column is-one-fifth">
+    <div class="column is-3">
+      <a class="box has-text-centered" href="/professores">
+        <p class="is-size-7 has-text-grey has-text-weight-semibold">{{ icon("teacher", "mr-1") }} Professores</p>
+        <p class="title is-3 mt-2 mb-0">{{ counts.professores }}</p>
+      </a>
+    </div>
+    <div class="column is-3">
       <a class="box has-text-centered" href="/disciplinas">
-        <p class="heading">Disciplinas</p>
-        <p class="title">{{ counts.disciplinas }}</p>
+        <p class="is-size-7 has-text-grey has-text-weight-semibold">{{ icon("book", "mr-1") }} Disciplinas</p>
+        <p class="title is-3 mt-2 mb-0">{{ counts.disciplinas }}</p>
       </a>
     </div>
-    <div class="column is-one-fifth">
+    <div class="column is-3">
       <a class="box has-text-centered" href="/salas">
-        <p class="heading">Salas</p>
-        <p class="title">{{ counts.salas }}</p>
-      </a>
-    </div>
-    <div class="column is-one-fifth">
-      <a class="box has-text-centered" href="/grade">
-        <p class="heading">Grades geradas</p>
-        <p class="title">{{ counts.grades }}</p>
+        <p class="is-size-7 has-text-grey has-text-weight-semibold">{{ icon("door", "mr-1") }} Salas</p>
+        <p class="title is-3 mt-2 mb-0">{{ counts.salas }}</p>
       </a>
     </div>
   </div>
 
-  {% if ultima %}
-    <article class="message is-link">
-      <div class="message-header">
-        <p>Última grade gerada</p>
+  <div class="columns mt-3">
+    <div class="column is-7">
+      <div class="box">
+        <h2 class="title is-5 mt-0">
+          {{ icon("check", "mr-1") }} Checklist para gerar uma grade
+        </h2>
+        <p class="has-text-grey mb-3">
+          Verifique abaixo se tudo está pronto. Cada turma precisa de
+          <strong>{{ slots_por_turma }} aulas por semana</strong> distribuídas em disciplinas.
+        </p>
+        {% for etapa in readiness.etapas %}
+          {{ readiness_row(etapa.ok, etapa.titulo, etapa.detalhe, etapa.action_url, etapa.action_label) }}
+        {% endfor %}
+
+        <div class="mt-4">
+          {% if readiness.tudo_pronto %}
+            <a class="button is-success" href="/grade/nova">{{ icon("play", "mr-1") }} Gerar grade agora</a>
+          {% else %}
+            <a class="button is-warning is-light" href="/onboarding">Resolver pendências guiadas</a>
+          {% endif %}
+        </div>
       </div>
-      <div class="message-body">
-        Versão <strong>{{ ultima.versao }}</strong> do semestre
-        <strong>{{ ultima.semestre }}</strong> — status
-        <span class="tag is-{% if ultima.status.value == 'done' %}success{% elif ultima.status.value == 'failed' %}danger{% else %}info{% endif %}">
-          {{ ultima.status.value }}
-        </span>
-        {% if ultima.score_penalidade is not none %}
-          · score <strong>{{ "%.0f"|format(ultima.score_penalidade) }}</strong>
+    </div>
+
+    <div class="column is-5">
+      <div class="box">
+        <h2 class="title is-5 mt-0">
+          {{ icon("calendar", "mr-1") }} Última grade gerada
+        </h2>
+        {% if ultima %}
+          <p class="mb-2">
+            <strong>Semestre {{ ultima.semestre }}</strong>
+            · versão {{ ultima.versao }}
+            · {{ status_tag(ultima.status) }}
+          </p>
+          {% if ultima.status.value == 'done' %}
+            <p class="mb-3">Qualidade: {{ quality(ultima.score_penalidade) }}</p>
+          {% endif %}
+          <a class="button is-link is-light" href="/grade/{{ ultima.id }}">
+            Abrir esta grade
+          </a>
+          <a class="button is-text" href="/grade">Ver histórico</a>
+        {% else %}
+          <p class="has-text-grey">
+            Você ainda não gerou nenhuma grade. Assim que o checklist estiver completo,
+            clique em <strong>Gerar grade</strong>.
+          </p>
         {% endif %}
-        · solver <code>{{ ultima.solver_usado or "?" }}</code>
-        · <a href="/grade/{{ ultima.id }}">abrir</a>.
       </div>
-    </article>
-  {% else %}
-    <div class="notification">
-      Ainda não há grades geradas. Comece cadastrando os
-      <a href="/professores">professores</a>, <a href="/disciplinas">disciplinas</a>,
-      <a href="/turmas">turmas</a> e clique em <a href="/grade/nova">Nova geração</a>.
-    </div>
-  {% endif %}
 
-  <div class="content mt-5">
-    <h3 class="title is-4">Restrições do modelo</h3>
-    <ul>
-      <li><strong>HC1</strong> — carga horária semanal exata por disciplina.</li>
-      <li><strong>HC2</strong> — turma exclusiva por slot.</li>
-      <li><strong>HC3</strong> — professor exclusivo por slot.</li>
-      <li><strong>HC4</strong> — cada turma com pelo menos 3 aulas na quarta-feira.</li>
-      <li><strong>HC5</strong> — slots indisponíveis do professor são bloqueados.</li>
-      <li><strong>HC6</strong> — toda turma com pelo menos 1 aula em cada dia (sem dias vazios).</li>
-      <li><strong>HC7</strong> — toda turma ocupa todos os 30 períodos da semana (nenhum horário vazio); se o currículo não preenche, a geração é abortada.</li>
-      <li><strong>SC1</strong> — penaliza janelas vazias do professor (peso 100).</li>
-      <li><strong>SC2</strong> — penaliza pares consecutivos de mesma área (peso 30).</li>
-      <li><strong>SC3</strong> — penaliza blocos de 3+ aulas teóricas (peso 50).</li>
-      <li><strong>SC4</strong> — penaliza splits (blocos não contíguos) do mesmo professor com a mesma turma no mesmo dia (peso 200).</li>
-    </ul>
+      <div class="box mt-4">
+        <h3 class="title is-6 mt-0">
+          {{ icon("info", "mr-1") }} Como funciona?
+        </h3>
+        <p class="has-text-grey">
+          O sistema testa milhares de combinações respeitando o currículo de cada turma,
+          a carga de cada disciplina e as preferências de horário dos professores.
+          Você pode escolher entre o modo <strong>Otimizado</strong> (mais cuidadoso) e
+          o modo <strong>Rápido</strong> ao gerar.
+        </p>
+      </div>
+    </div>
   </div>
+
+  <details class="mt-5">
+    <summary class="has-text-grey">Detalhes técnicos (regras consideradas)</summary>
+    <div class="content mt-3 has-text-grey">
+      <p>O motor de cálculo trabalha com as seguintes restrições:</p>
+      <ul>
+        <li><strong>Carga semanal</strong> de cada disciplina respeitada por turma.</li>
+        <li><strong>Sem sobreposição</strong>: nem turma nem professor em dois lugares ao mesmo tempo.</li>
+        <li><strong>Quarta-feira</strong> tem ao menos 3 aulas por turma (período integral).</li>
+        <li><strong>Indisponibilidade docente</strong>: horários marcados como "não pode" são respeitados.</li>
+        <li><strong>Cobertura total</strong>: nenhum horário fica vazio na grade (se faltarem aulas no currículo, a geração avisa antes).</li>
+      </ul>
+      <p>E busca minimizar (em ordem de prioridade):</p>
+      <ul>
+        <li>Professor lecionando a mesma turma em períodos quebrados no mesmo dia.</li>
+        <li>Janelas vagas do professor entre duas aulas do mesmo dia.</li>
+        <li>Blocos de 3+ aulas teóricas consecutivas sem prática no meio.</li>
+        <li>Duas disciplinas da mesma área coladas para a mesma turma.</li>
+      </ul>
+    </div>
+  </details>
 {% endblock %}

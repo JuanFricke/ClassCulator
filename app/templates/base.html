@@ -1,4 +1,5 @@
 <!doctype html>
+{% from "_macros.html" import icon %}
 <html lang="pt-br">
   <head>
     <meta charset="utf-8" />
@@ -14,21 +15,55 @@
     <nav class="navbar is-dark" role="navigation" aria-label="main navigation">
       <div class="container">
         <div class="navbar-brand">
-          <a class="navbar-item has-text-weight-bold" href="/">
-            ClassCulator
+          <a class="navbar-item has-text-weight-bold is-size-5" href="/">
+            {{ icon("wand", "mr-2") }} ClassCulator
           </a>
+          <button
+            class="navbar-burger"
+            aria-label="menu"
+            aria-expanded="false"
+            data-navbar-burger
+            data-target="mainNavbarMenu"
+            type="button"
+          >
+            <span aria-hidden="true"></span>
+            <span aria-hidden="true"></span>
+            <span aria-hidden="true"></span>
+          </button>
         </div>
-        <div class="navbar-menu is-active">
+        <div id="mainNavbarMenu" class="navbar-menu">
           <div class="navbar-start">
-            <a class="navbar-item {% if active == 'home' %}is-active has-text-info{% endif %}" href="/">Início</a>
-            <a class="navbar-item {% if active == 'professores' %}is-active has-text-info{% endif %}" href="/professores">Professores</a>
-            <a class="navbar-item {% if active == 'turmas' %}is-active has-text-info{% endif %}" href="/turmas">Turmas</a>
-            <a class="navbar-item {% if active == 'disciplinas' %}is-active has-text-info{% endif %}" href="/disciplinas">Disciplinas</a>
-            <a class="navbar-item {% if active == 'salas' %}is-active has-text-info{% endif %}" href="/salas">Salas</a>
-            <a class="navbar-item {% if active == 'grade' %}is-active has-text-info{% endif %}" href="/grade">Grades</a>
+            <a class="navbar-item {% if active == 'home' %}is-active has-text-info{% endif %}" href="/">
+              {{ icon("info", "mr-1") }} Painel
+            </a>
+            <a class="navbar-item {% if active == 'onboarding' %}is-active has-text-info{% endif %}" href="/onboarding">
+              {{ icon("wand", "mr-1") }} Configuração guiada
+            </a>
+            <a class="navbar-item {% if active == 'gestao' %}is-active has-text-info{% endif %}" href="/gestao">
+              {{ icon("check", "mr-1") }} Gerenciar dados
+            </a>
+            <a class="navbar-item {% if active == 'turmas' %}is-active has-text-info{% endif %}" href="/turmas">
+              {{ icon("users", "mr-1") }} Turmas
+            </a>
+            <a class="navbar-item {% if active == 'professores' %}is-active has-text-info{% endif %}" href="/professores">
+              {{ icon("teacher", "mr-1") }} Professores
+            </a>
+            <a class="navbar-item {% if active == 'disciplinas' %}is-active has-text-info{% endif %}" href="/disciplinas">
+              {{ icon("book", "mr-1") }} Disciplinas
+            </a>
+            <a class="navbar-item {% if active == 'salas' %}is-active has-text-info{% endif %}" href="/salas">
+              {{ icon("door", "mr-1") }} Salas
+            </a>
+            <a class="navbar-item {% if active == 'grade' %}is-active has-text-info{% endif %}" href="/grade">
+              {{ icon("calendar", "mr-1") }} Grades
+            </a>
           </div>
           <div class="navbar-end">
-            <a class="navbar-item" href="/docs" target="_blank">API docs</a>
+            <div class="navbar-item">
+              <a class="button is-info" href="/grade/nova">
+                {{ icon("play", "mr-1") }} Gerar grade
+              </a>
+            </div>
           </div>
         </div>
       </div>
@@ -41,13 +76,16 @@
     </main>
 
     <footer class="footer">
-      <div class="content has-text-centered">
+      <div class="content has-text-centered has-text-grey">
         <p>
-          <strong>ClassCulator</strong> — Sistema de Geração Automática de Grade Horária
-          (UNIJUÍ · Ciência da Computação · EI 03 / 2026).
+          <strong>ClassCulator</strong> · Sistema de Geração Automática de Grade Horária ·
+          UNIJUÍ — Ciência da Computação · EI 03 / 2026.
+          <a href="/docs" target="_blank" class="ml-3 has-text-grey">documentação técnica</a>
         </p>
       </div>
     </footer>
+
+    <div id="cc-modal-root"></div>
 
     <script src="/static/js/app.js" defer></script>
     {% block scripts %}{% endblock %}

@@ -1,7 +1,14 @@
+:root {
+  --cc-bg-soft: #f7f9fc;
+  --cc-border: #e3e7ef;
+  --cc-text-muted: #6b7280;
+}
+
 body {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  background-color: var(--cc-bg-soft);
 }
 
 main {
@@ -11,30 +18,267 @@ main {
 .footer {
   flex-shrink: 0;
   padding: 1.5rem;
+  background-color: #fff;
+  border-top: 1px solid var(--cc-border);
 }
 
 .is-hidden {
   display: none !important;
 }
 
+/* ---------- ícones SVG inline ---------- */
+.cc-icon {
+  display: inline-block;
+  vertical-align: -2px;
+  width: 1.05em;
+  height: 1.05em;
+}
+.tag .cc-icon { width: 1em; height: 1em; }
+
+/* ---------- nav ---------- */
+.navbar.is-dark {
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.1);
+}
+.navbar-item.is-active {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+/* ---------- fluxo guiado ---------- */
+.steps-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+.steps-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid var(--cc-border);
+  background: #fff;
+  color: #4a4a4a;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.steps-item .steps-dot {
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  background: #f2f4f8;
+}
+.steps-item.is-current {
+  border-color: #3273dc;
+  color: #1f4fa3;
+  background: #edf4ff;
+}
+.steps-item.is-current .steps-dot {
+  background: #3273dc;
+  color: #fff;
+}
+.steps-item.is-done {
+  border-color: #bde8cc;
+  color: #257953;
+  background: #f1fbf5;
+}
+.steps-item.is-done .steps-dot {
+  background: #48c774;
+  color: #fff;
+}
+
+/* ---------- cards ---------- */
+.cc-card {
+  background: #fff;
+  border: 1px solid var(--cc-border);
+  border-radius: 10px;
+  padding: 1.25rem 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+/* ---------- prontidão (checklist da home) ---------- */
+.readiness-row {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--cc-border);
+}
+.readiness-row:last-child { border-bottom: none; }
+.readiness-row .readiness-text { flex: 1; min-width: 0; }
+.readiness-row .readiness-text small { display: block; margin-top: 0.1rem; }
+.readiness-row .readiness-icon {
+  width: 2rem; height: 2rem;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+.readiness-row.is-ok .readiness-icon { background: #effaf3; color: #257953; }
+.readiness-row.is-pending .readiness-icon { background: #fff8db; color: #946c00; }
+
+/* ---------- escolha de modo (cards) ---------- */
+.mode-card {
+  border: 2px solid var(--cc-border);
+  border-radius: 10px;
+  padding: 1.25rem;
+  cursor: pointer;
+  transition: border-color 0.12s, box-shadow 0.12s;
+  background: #fff;
+  display: block;
+  height: 100%;
+}
+.mode-card:hover { border-color: #c8d4ea; }
+.mode-card input[type="radio"] { display: none; }
+.mode-card.is-selected,
+.mode-card:has(input:checked) {
+  border-color: #3273dc;
+  box-shadow: 0 2px 10px rgba(50, 115, 220, 0.15);
+  background: #f0f6ff;
+}
+.mode-card .mode-badge {
+  display: inline-block;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  font-weight: 700;
+  background: #257953;
+  color: #fff;
+  padding: 0.15rem 0.55rem;
+  border-radius: 99px;
+  letter-spacing: 0.03em;
+  margin-bottom: 0.35rem;
+}
+.mode-card h3 { margin-bottom: 0.35rem; font-weight: 700; }
+.mode-card p { color: var(--cc-text-muted); font-size: 0.92rem; }
+
+/* ---------- qualidade ---------- */
+.quality-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+}
+.quality-stars {
+  font-size: 1.1em;
+  letter-spacing: 0.06em;
+}
+
+/* ---------- carga horária / progresso de currículo ---------- */
+.carga-progress {
+  position: relative;
+  height: 1.5rem;
+  background: #eef2f8;
+  border-radius: 99px;
+  overflow: hidden;
+}
+.carga-progress .carga-fill {
+  height: 100%;
+  background: #3273dc;
+  transition: width 0.2s ease, background-color 0.2s ease;
+}
+.carga-progress.is-incomplete .carga-fill { background: #ffdd57; }
+.carga-progress.is-over .carga-fill { background: #f14668; }
+.carga-progress.is-complete .carga-fill { background: #48c774; }
+.carga-progress .carga-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #2c2c2c;
+}
+
+/* ---------- tabela da grade ---------- */
+.grade-table {
+  border: 1px solid var(--cc-border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+}
 .grade-table th,
 .grade-table td {
   vertical-align: middle;
-  min-width: 110px;
+  min-width: 120px;
+  padding: 0.55rem 0.45rem !important;
 }
-
+.grade-table thead th,
+.grade-table th[scope="row"],
+.grade-table .grade-day {
+  background-color: #f1f4fa;
+  font-weight: 600;
+  color: #4a4a4a;
+}
 .grade-cell {
-  font-size: 0.85rem;
-  line-height: 1.2;
+  font-size: 0.82rem;
+  line-height: 1.25;
+  border: 1px solid #e9ecf3 !important;
+}
+.grade-cell strong { display: block; margin-bottom: 2px; }
+.grade-cell .cell-room {
+  font-size: 0.72rem;
+  color: var(--cc-text-muted);
+  display: block;
+  margin-top: 2px;
 }
 
-/* Areas (SC2 visualization) */
-.grade-cell[data-area="exatas"] { background-color: #e3f2ff; }
-.grade-cell[data-area="humanas"] { background-color: #fff3e0; }
+/* Áreas (com legenda) */
+.grade-cell[data-area="exatas"]     { background-color: #e3f2ff; }
+.grade-cell[data-area="humanas"]    { background-color: #fff3e0; }
 .grade-cell[data-area="biologicas"] { background-color: #e8f5e9; }
 .grade-cell[data-area="linguagens"] { background-color: #fce4ec; }
-.grade-cell[data-area="codigo"] { background-color: #ede7f6; }
-.grade-cell[data-area="programacao"] { background-color: #ede7f6; }
+.grade-cell[data-area="geral"]      { background-color: #f5f5f5; }
+.grade-cell[data-area="codigo"],
+.grade-cell[data-area="programacao"]{ background-color: #ede7f6; }
 .grade-cell[data-area="matematica"] { background-color: #e3f2ff; }
-.grade-cell[data-area="sistemas"] { background-color: #f1f8e9; }
-.grade-cell[data-area="redes"] { background-color: #fff8e1; }
+.grade-cell[data-area="sistemas"]   { background-color: #f1f8e9; }
+.grade-cell[data-area="redes"]      { background-color: #fff8e1; }
+
+.area-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.85rem;
+  font-size: 0.8rem;
+  margin: 0.5rem 0 1rem;
+}
+.area-legend .swatch {
+  display: inline-block;
+  width: 0.9rem; height: 0.9rem;
+  vertical-align: middle;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 3px;
+  margin-right: 0.25rem;
+}
+
+/* ---------- disponibilidade do professor ---------- */
+.disp-grid input[type="checkbox"] {
+  width: 1.15rem; height: 1.15rem;
+  cursor: pointer;
+}
+.disp-grid td { padding: 0.25rem 0.4rem !important; }
+.disp-grid td.is-unavailable { background-color: #ffe8eb; }
+.disp-day-actions .button { font-size: 0.75rem; }
+
+/* ---------- toast feedback ---------- */
+.cc-feedback {
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  font-weight: 500;
+}
+
+/* ---------- impressão (somente a tabela da grade) ---------- */
+@media print {
+  body { background: #fff; }
+  .navbar, .footer, .level, .area-legend,
+  .no-print, button, details, .breadcrumb {
+    display: none !important;
+  }
+  .section { padding: 0 !important; }
+  .grade-table { box-shadow: none; border: 1px solid #999; }
+  .grade-cell { font-size: 0.75rem; }
+  h2.title.is-4 { font-size: 1rem; }
+}
+
