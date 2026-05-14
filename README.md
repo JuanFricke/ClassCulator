@@ -84,20 +84,30 @@ app/
 
 ## Modelo do problema
 
-Calendário fixo: **5 dias × 6 slots = 30 períodos**.
+Calendário: **5 dias úteis (segunda a sexta)**. Cada turma tem seu próprio
+`slots_por_dia` (vetor de 5 inteiros entre 0 e `SLOTS_DIA_MAX = 8`); a carga
+semanal alvo da turma é `sum(slots_por_dia)`. O dataset padrão (`app.seed`,
+EFA Francisco de Assis) usa `[6,6,6,6,6] = 30` em todas as turmas — caso
+retangular, ainda suportado pelo solver clássico. Datasets com janela
+semanal irregular (ex.: `app.seed_alt`) devem ser resolvidos com o
+**solver CP-SAT**; o solver clássico devolve erro amigável nesse caso.
 
 ### Hard constraints (HC)
 
 - **HC1** — carga horária semanal exata por disciplina.
 - **HC2** — exclusividade de turma.
 - **HC3** — exclusividade de professor.
-- **HC4** — cada turma tem **≥ 3 aulas na quarta-feira**.
+- **HC4** — cada turma tem **≥ min(3, slots_por_dia[quarta]) aulas na
+  quarta-feira** (condicional ao próprio expediente da turma).
 - **HC5** — slots indisponíveis do professor não podem receber alocação.
-- **HC6** — toda turma tem **≥ 1 aula em cada dia** (sem dias vazios).
-- **HC7** — toda turma ocupa **todos os 30 períodos** da semana (nenhum horário vazio).
-  Validação prévia: se o currículo somado não totalizar 30 aulas/sem, o
-  endpoint `POST /api/v1/grade/gerar` retorna **422** com a lista de turmas
-  problemáticas, sem chegar a invocar o solver.
+- **HC6** — toda turma tem **≥ 1 aula em cada dia útil com expediente**
+  (dias com `slots_por_dia[d] = 0` ficam vazios por design).
+- **HC7** — toda turma ocupa **exatamente `sum(slots_por_dia)` períodos**
+  da semana (nenhum horário vazio dentro da janela e nenhuma sobra).
+  Validação prévia: se o currículo somado de uma turma não totalizar
+  `sum(slots_por_dia)`, o endpoint `POST /api/v1/grade/gerar` retorna
+  **422** com a lista de turmas problemáticas, sem chegar a invocar o
+  solver.
 
 ### Soft constraints (SC) — função de penalidade
 
