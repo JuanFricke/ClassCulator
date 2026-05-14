@@ -27,17 +27,36 @@ logger = logging.getLogger(__name__)
 def solve_classic(
     instance: ProblemInstance,
     *,
-    timeout_s: int = 30,
+    timeout_s: int | None = None,
     hill_iters: int = 800,
+    stop_on_first_feasible: bool = False,
     seed: int | None = None,
 ) -> SolverResult:
     """Resolve em duas fases: viabilidade (backtracking+FC+MRV) e otimização (hill climbing)."""
 
     rng = random.Random(seed)
     started = time.monotonic()
-    deadline = started + timeout_s
+    deadline = started + timeout_s if timeout_s is not None else float("inf")
 
     log_lines: list[str] = []
+
+    # Guarda: o solver clássico ainda assume grade retangular 5 × SLOTS_DIA.
+    # Para datasets com `slots_por_dia` irregular (ex.: app.seed_alt), retornamos
+    # erro amigável e direcionamos o usuário ao CP-SAT.
+    irregulares = [t.identificador for t in instance.turmas if not t.is_retangular]
+    if irregulares:
+        return SolverResult(
+            status=SolverStatus.ERROR,
+            elapsed_s=time.monotonic() - started,
+            log=(
+                "O solver clássico só suporta turmas com grade retangular "
+                f"(5 dias × {SLOTS_DIA} slots = {SLOTS_DIA * DIAS} períodos/semana). "
+                f"Turmas com slots_por_dia irregular detectadas: "
+                f"{', '.join(irregulares[:8])}"
+                f"{' (+%d outras)' % (len(irregulares) - 8) if len(irregulares) > 8 else ''}. "
+                "Use solver='cpsat' para gerar a grade deste dataset."
+            ),
+        )
 
     domains = _initial_domains(instance)
 
@@ -75,6 +94,19 @@ def solve_classic(
     log_lines.append(
         f"[fase1] solução viável encontrada. score inicial={score:.0f} {breakdown}."
     )
+
+    if stop_on_first_feasible:
+        elapsed = time.monotonic() - started
+        log_lines.append(
+            f"[fase2] otimização desativada (modo checagem). retorno em {elapsed:.2f}s."
+        )
+        return SolverResult(
+            status=SolverStatus.OK,
+            assignments=dict(state.assignments),
+            score=score,
+            elapsed_s=elapsed,
+            log="\n".join(log_lines),
+        )
 
     state.assignments, score, breakdown = _hill_climbing(
         instance,
