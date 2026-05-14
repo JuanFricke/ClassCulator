@@ -13,7 +13,7 @@
 
   {{ page_header("Turmas", "users", "Gerencie turmas, semestres e currículo.", "/turmas/novo", "Nova turma") }}
   <div class="notification is-link is-light">
-    <strong>Fluxo recomendado:</strong> complete o currículo de cada turma com {{ carga_alvo }} aulas/semana para liberar a geração sem falhas.
+    <strong>Fluxo recomendado:</strong> complete o currículo de cada turma de acordo com seu próprio total de períodos (sum(slots_por_dia)) para liberar a geração sem falhas.
     <a class="ml-2" href="/onboarding">Abrir configuração guiada</a>
   </div>
 
@@ -47,15 +47,16 @@
                 <td>{{ t.semestre }}</td>
                 <td>{{ t.qtd_alunos }}</td>
                 {% set carga = carga_por_turma.get(t.id, 0) %}
+                {% set alvo = alvo_por_turma.get(t.id, carga_alvo) %}
                 <td>
-                  {% if carga == carga_alvo %}
-                    <span class="tag is-success is-light">{{ carga }}/{{ carga_alvo }} completo</span>
+                  {% if carga == alvo %}
+                    <span class="tag is-success is-light">{{ carga }}/{{ alvo }} completo</span>
                   {% elif carga == 0 %}
                     <span class="tag is-warning is-light">Sem currículo</span>
-                  {% elif carga > carga_alvo %}
-                    <span class="tag is-danger is-light">{{ carga }}/{{ carga_alvo }} excesso</span>
+                  {% elif carga > alvo %}
+                    <span class="tag is-danger is-light">{{ carga }}/{{ alvo }} excesso</span>
                   {% else %}
-                    <span class="tag is-warning is-light">{{ carga }}/{{ carga_alvo }} incompleto</span>
+                    <span class="tag is-warning is-light">{{ carga }}/{{ alvo }} incompleto</span>
                   {% endif %}
                 </td>
                 <td class="has-text-right">

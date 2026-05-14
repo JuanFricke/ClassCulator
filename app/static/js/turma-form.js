@@ -2,6 +2,8 @@ const form = document.getElementById("turma-form");
 const feedback = document.getElementById("turma-feedback");
 const identificadorInput = document.getElementById("turma-identificador");
 const ensinoSelect = document.getElementById("turma-ensino");
+const slotInputs = Array.from(document.querySelectorAll(".js-slot-input"));
+const slotsTotalDisplay = document.getElementById("slots-total-display");
 
 function inferEnsinoFromTurma(identificador) {
   const upper = (identificador || "").trim().toUpperCase();
@@ -15,15 +17,40 @@ identificadorInput?.addEventListener("input", () => {
   ensinoSelect.value = inferEnsinoFromTurma(identificadorInput.value);
 });
 
+function readSlotsPorDia() {
+  if (slotInputs.length !== 5) return null;
+  const valores = new Array(5).fill(0);
+  for (const input of slotInputs) {
+    const dia = parseInt(input.dataset.dia, 10);
+    const raw = parseInt(input.value, 10);
+    valores[dia] = Number.isFinite(raw) ? Math.max(0, raw) : 0;
+  }
+  return valores;
+}
+
+function updateSlotsTotalDisplay() {
+  if (!slotsTotalDisplay) return;
+  const valores = readSlotsPorDia() || [];
+  slotsTotalDisplay.textContent = valores.reduce((a, b) => a + b, 0);
+}
+
+slotInputs.forEach((input) => {
+  input.addEventListener("input", updateSlotsTotalDisplay);
+});
+
 form?.addEventListener("submit", async (event) => {
   event.preventDefault();
   const data = new FormData(form);
+  const slotsPorDia = readSlotsPorDia();
   const payload = {
     identificador: data.get("identificador"),
     ensino: inferEnsinoFromTurma(data.get("identificador")),
     semestre: data.get("semestre"),
     qtd_alunos: parseInt(data.get("qtd_alunos"), 10),
   };
+  if (slotsPorDia) {
+    payload.slots_por_dia = slotsPorDia;
+  }
   const id = form.dataset.id;
   const url = id ? `/api/v1/turmas/${id}` : "/api/v1/turmas";
   const method = id ? "PATCH" : "POST";
@@ -35,6 +62,9 @@ form?.addEventListener("submit", async (event) => {
     window.api.feedback(feedback, "Turma salva com sucesso.", "is-success");
     if (!id && result?.id) {
       setTimeout(() => (window.location.href = `/turmas/${result.id}`), 600);
+    } else if (id) {
+      // Recarrega para recomputar carga_alvo / currículo visível após a edição.
+      setTimeout(() => window.location.reload(), 600);
     }
   } catch (err) {
     window.api.feedback(feedback, err.message, "is-danger");

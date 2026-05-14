@@ -75,8 +75,9 @@
           {{ icon("check", "mr-1") }} Checklist para gerar uma grade
         </h2>
         <p class="has-text-grey mb-3">
-          Verifique abaixo se tudo está pronto. Cada turma precisa de
-          <strong>{{ slots_por_turma }} aulas por semana</strong> distribuídas em disciplinas.
+          Verifique abaixo se tudo está pronto. O currículo de cada turma
+          precisa fechar exatamente <strong>sum(slots_por_dia)</strong> aulas
+          por semana (no dataset padrão, 30 aulas/semana).
         </p>
         {% for etapa in readiness.etapas %}
           {{ readiness_row(etapa.ok, etapa.titulo, etapa.detalhe, etapa.action_url, etapa.action_label) }}

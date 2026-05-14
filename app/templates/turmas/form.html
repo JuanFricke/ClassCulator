@@ -69,6 +69,43 @@
         </div>
       </div>
     </div>
+
+    <div class="field">
+      <label class="label">Períodos por dia</label>
+      <p class="help has-text-grey mb-2">
+        Define quantos períodos cada dia útil tem para esta turma. Use 0 para
+        dias sem expediente (ex.: educação infantil sem aulas na sexta).
+        O total será a carga semanal obrigatória do currículo (HC7).
+      </p>
+      <div class="slots-por-dia-grid" id="slots-por-dia-grid">
+        {% for dia_idx in range(5) %}
+          <div class="slots-por-dia-cell">
+            <label class="label is-small" for="slots-dia-{{ dia_idx }}">
+              {{ DIAS_LABELS[dia_idx] }}
+            </label>
+            <input
+              id="slots-dia-{{ dia_idx }}"
+              class="input has-text-centered js-slot-input"
+              type="number"
+              min="0"
+              max="{{ SLOTS_DIA_MAX }}"
+              data-dia="{{ dia_idx }}"
+              value="{{ slots_por_dia[dia_idx] if slots_por_dia else 6 }}"
+            />
+          </div>
+        {% endfor %}
+        <div class="slots-por-dia-cell slots-por-dia-total">
+          <span class="label is-small has-text-grey">Total/semana</span>
+          <div class="slots-por-dia-total-value">
+            <strong id="slots-total-display">
+              {{ (slots_por_dia | sum) if slots_por_dia else 30 }}
+            </strong>
+            <span class="has-text-grey is-size-7">períodos</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="field is-grouped">
       <div class="control">
         <button class="button is-link" type="submit">
@@ -91,7 +128,8 @@
     </h2>
     <p class="subtitle is-6 has-text-grey">
       Escolha quais disciplinas a turma terá e o professor responsável por cada uma.
-      Todas as disciplinas do mesmo nível de ensino já são adicionadas automaticamente; remova apenas as que a turma não terá.
+      Use o botão <strong>+ Adicionar disciplina</strong> para incluir as do
+      nível desta turma até fechar exatamente <strong>{{ carga_alvo }} aulas/semana</strong>.
     </p>
     {% if not disciplinas %}
       <article class="notification is-warning is-light">
@@ -105,7 +143,7 @@
             Ambos
           {% endif %}
         </strong>.
-        Cadastre disciplinas desta tag para montar o currículo automaticamente.
+        Cadastre disciplinas desta tag antes de montar o currículo.
       </article>
     {% endif %}
 
@@ -209,7 +247,7 @@
       <div class="field is-grouped">
         <div class="control">
           <button type="button" class="button is-info is-light" id="curriculo-add" {% if not disciplinas %}disabled{% endif %}>
-            + Recolocar disciplina
+            + Adicionar disciplina
           </button>
         </div>
         <div class="control">

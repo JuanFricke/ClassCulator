@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any
 
@@ -24,15 +25,68 @@ from app.models import (
     TurmaDisciplina,
 )
 from app.solver.constraints import calcular_score
-from app.solver.domain import DIAS, SLOTS_DIA, SLOTS_POR_TURMA
+from app.solver.domain import DIAS, SLOTS_DIA_MAX, SLOTS_POR_DIA_DEFAULT, SLOTS_POR_TURMA
 
 TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 DIAS_LABELS = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta"]
-SLOT_LABELS = [f"{7 + i}h–{8 + i}h" for i in range(SLOTS_DIA)]
+SLOT_LABELS = [f"Período {i + 1}" for i in range(SLOTS_DIA_MAX)]
 
 router = APIRouter()
+
+
+# --- Filtragem de disciplinas por nível ---------------------------------- #
+# Datasets como `app.seed_alt` separam disciplinas por nível pedagógico
+# (EI / EF I / EF II / EM) mas todas com o mesmo `ensino` no banco
+# (fundamental ou médio). Para evitar mostrar "Biologia" no dropdown de uma
+# turma de Educação Infantil — ou "Matemática EF I" para uma C-class —
+# detectamos o nível pelo identificador da turma e pelo sufixo do nome da
+# disciplina. Quando o nível não pode ser detectado (datasets legados sem
+# sufixo, ex.: EFA "Matemática"), a disciplina é considerada universal e
+# nunca filtrada.
+
+_REGEX_TURMA_NIVEL: tuple[tuple[re.Pattern[str], str], ...] = (
+    (re.compile(r"^A\d+$"), "EI"),
+    (re.compile(r"^B\d+$"), "EFI"),
+    (re.compile(r"^C\d+$"), "EFII"),
+    (re.compile(r"^\d{3}$"), "EM"),
+)
+
+
+def _nivel_da_turma(identificador: str) -> str | None:
+    for pattern, nivel in _REGEX_TURMA_NIVEL:
+        if pattern.match(identificador or ""):
+            return nivel
+    return None
+
+
+def _nivel_da_disciplina(nome: str) -> str | None:
+    nome = (nome or "").strip()
+    if nome.endswith(" EF II"):
+        return "EFII"
+    if nome.endswith(" EF I"):
+        return "EFI"
+    if nome.endswith(" EI"):
+        return "EI"
+    if nome.endswith(" EM"):
+        return "EM"
+    return None
+
+
+def _disciplinas_compativeis(turma: Turma | None, todas: list[Disciplina]) -> list[Disciplina]:
+    """Restringe a lista pelo nível detectado da turma; mantém disciplinas
+    sem sufixo (universais)."""
+
+    if turma is None:
+        return list(todas)
+    nivel_turma = _nivel_da_turma(turma.identificador)
+    if nivel_turma is None:
+        return list(todas)
+    return [
+        d for d in todas
+        if _nivel_da_disciplina(d.nome) in (None, nivel_turma)
+    ]
 
 
 def render(request: Request, template_name: str, /, **context: Any) -> HTMLResponse:
@@ -40,9 +94,10 @@ def render(request: Request, template_name: str, /, **context: Any) -> HTMLRespo
 
     payload: dict[str, Any] = {
         "DIAS": list(range(DIAS)),
-        "SLOTS": list(range(SLOTS_DIA)),
+        "SLOTS": list(range(SLOTS_DIA_MAX)),
         "DIAS_LABELS": DIAS_LABELS,
         "SLOT_LABELS": SLOT_LABELS,
+        "SLOTS_DIA_MAX": SLOTS_DIA_MAX,
         "active": "",
     }
     payload.update(context)
@@ -67,7 +122,7 @@ async def home(request: Request, session: SessionDep):
         counts=counts,
         ultima=ultima,
         readiness=readiness,
-        slots_por_turma=SLOTS_POR_TURMA,
+        slots_por_turma=SLOTS_POR_TURMA,  # valor de referência (caso retangular)
     )
 
 
@@ -130,7 +185,8 @@ async def _calcular_prontidao(session: SessionDep, counts: dict) -> dict:
     """Resume o estado da configuração para o painel inicial.
 
     Retorna uma estrutura com flags por etapa e, se houver turmas, a carga
-    atual e o que falta para cada uma fechar os SLOTS_POR_TURMA períodos.
+    atual e o que falta para cada uma fechar o seu próprio
+    ``sum(slots_por_dia)``.
     """
 
     turmas_ok = True
@@ -140,22 +196,26 @@ async def _calcular_prontidao(session: SessionDep, counts: dict) -> dict:
             select(
                 Turma.id,
                 Turma.identificador,
+                Turma.slots_por_dia,
                 func.coalesce(func.sum(Disciplina.carga_semanal), 0).label("carga"),
             )
             .join(TurmaDisciplina, TurmaDisciplina.turma_id == Turma.id, isouter=True)
             .join(Disciplina, Disciplina.id == TurmaDisciplina.disciplina_id, isouter=True)
-            .group_by(Turma.id, Turma.identificador)
+            .group_by(Turma.id, Turma.identificador, Turma.slots_por_dia)
             .order_by(Turma.identificador)
         )
         for row in cargas.all():
-            falta = SLOTS_POR_TURMA - int(row.carga)
+            alvo = sum(row.slots_por_dia or SLOTS_POR_DIA_DEFAULT)
+            carga_int = int(row.carga)
+            falta = alvo - carga_int
             if falta != 0:
                 turmas_ok = False
                 turmas_problema.append(
                     {
                         "id": row.id,
                         "identificador": row.identificador,
-                        "carga": int(row.carga),
+                        "carga": carga_int,
+                        "alvo": alvo,
                         "falta": falta,
                     }
                 )
@@ -218,9 +278,9 @@ def _detalhe_turmas(qtd_turmas: int, problemas: list[dict]) -> str:
     if qtd_turmas == 0:
         return "Nenhuma turma cadastrada ainda."
     if not problemas:
-        return f"{qtd_turmas} turma(s) com currículo completo (30 aulas/semana)."
+        return f"{qtd_turmas} turma(s) com currículo completo."
     nomes = ", ".join(
-        f"{p['identificador']} ({p['carga']}/{SLOTS_POR_TURMA})" for p in problemas[:4]
+        f"{p['identificador']} ({p['carga']}/{p['alvo']})" for p in problemas[:4]
     )
     extra = f" +{len(problemas) - 4} outras" if len(problemas) > 4 else ""
     return f"{len(problemas)} turma(s) com currículo incompleto: {nomes}{extra}."
@@ -377,13 +437,15 @@ async def turmas_list(request: Request, session: SessionDep):
         .group_by(Turma.id)
     )
     carga_por_turma = {row.id: int(row.carga) for row in cargas}
+    alvo_por_turma = {t.id: sum(t.slots_por_dia or SLOTS_POR_DIA_DEFAULT) for t in turmas}
     return render(
         request,
         "turmas/list.html",
         active="turmas",
         turmas=turmas,
         carga_por_turma=carga_por_turma,
-        carga_alvo=SLOTS_POR_TURMA,
+        alvo_por_turma=alvo_por_turma,
+        carga_alvo=SLOTS_POR_TURMA,  # mantido como fallback para o caso retangular
     )
 
 
@@ -413,6 +475,7 @@ async def turma_novo(request: Request, session: SessionDep):
         curriculo=[],
         carga_atual=0,
         carga_alvo=SLOTS_POR_TURMA,
+        slots_por_dia=list(SLOTS_POR_DIA_DEFAULT),
         professores_por_disciplina=professores_por_disciplina,
         ensino_options=["fundamental", "medio", "ambos"],
     )
@@ -424,48 +487,42 @@ async def turma_edit(turma_id: int, request: Request, session: SessionDep):
     if turma is None:
         raise HTTPException(status_code=404, detail="Turma não encontrada")
     ensino_turma = infer_turma_ensino(turma.identificador, turma.ensino)
-    discs = (
+    discs_all = (
         await session.execute(
             select(Disciplina)
             .where(Disciplina.ensino.in_([ensino_turma, "ambos"]))
             .order_by(Disciplina.nome)
         )
     ).scalars().all()
+    curriculo_db = (
+        await session.execute(select(TurmaDisciplina).where(TurmaDisciplina.turma_id == turma_id))
+    ).scalars().all()
+    # Mostra apenas as disciplinas EFETIVAMENTE atribuídas a esta turma.
+    # O usuário usa "+ Adicionar disciplina" para incluir novas conforme o
+    # currículo do nível da turma — antes pré-preenchíamos com TODAS as
+    # disciplinas compatíveis por `ensino`, o que produzia listas absurdas
+    # (>=25 disciplinas) quando o dataset combina EI/AI/AF sob o mesmo ensino.
+    curriculo = list(curriculo_db)
+    # Para o dropdown: filtra por nível detectado da turma, mas SEMPRE inclui
+    # as disciplinas já presentes no currículo salvo (para não sumirem se
+    # estiverem fora do filtro por algum motivo).
+    filtradas = _disciplinas_compativeis(turma, list(discs_all))
+    ids_curriculo = {c.disciplina_id for c in curriculo}
+    extras = [d for d in discs_all if d.id in ids_curriculo and d not in filtradas]
+    discs = sorted(filtradas + extras, key=lambda d: d.nome)
     profs = (
         await session.execute(select(Professor).order_by(Professor.nome))
     ).scalars().all()
     professores_por_disciplina = await _mapa_professores_por_disciplina(
         session, [d.id for d in discs]
     )
-    curriculo_db = (
-        await session.execute(select(TurmaDisciplina).where(TurmaDisciplina.turma_id == turma_id))
-    ).scalars().all()
-    curriculo_por_disciplina = {c.disciplina_id: c for c in curriculo_db}
-    curriculo = []
-    for disciplina in discs:
-        existing = curriculo_por_disciplina.get(disciplina.id)
-        if existing:
-            curriculo.append(existing)
-            continue
-        professores_ids = professores_por_disciplina.get(disciplina.id, [])
-        professor_padrao = professores_ids[0] if professores_ids else 0
-        curriculo.append(
-            {
-                "disciplina_id": disciplina.id,
-                "professor_id": professor_padrao,
-            }
-        )
     disc_by_id = {d.id: d for d in discs}
-    def _disciplina_id(item: TurmaDisciplina | dict[str, int]) -> int:
-        if isinstance(item, dict):
-            return item["disciplina_id"]
-        return item.disciplina_id
-
     carga_atual = sum(
-        disc_by_id[_disciplina_id(c)].carga_semanal
+        disc_by_id[c.disciplina_id].carga_semanal
         for c in curriculo
-        if _disciplina_id(c) in disc_by_id
+        if c.disciplina_id in disc_by_id
     )
+    slots_por_dia = list(turma.slots_por_dia or SLOTS_POR_DIA_DEFAULT)
     return render(
         request,
         "turmas/form.html",
@@ -475,7 +532,8 @@ async def turma_edit(turma_id: int, request: Request, session: SessionDep):
         professores=profs,
         curriculo=curriculo,
         carga_atual=carga_atual,
-        carga_alvo=SLOTS_POR_TURMA,
+        carga_alvo=sum(slots_por_dia),
+        slots_por_dia=slots_por_dia,
         professores_por_disciplina=professores_por_disciplina,
         ensino_options=["fundamental", "medio", "ambos"],
     )
@@ -541,8 +599,10 @@ async def grade_detail(grade_id: int, request: Request, session: SessionDep):
     salas = {s.id: s for s in (await session.execute(select(Sala))).scalars().all()}
 
     grades_por_turma: dict[int, list[list[dict | None]]] = {}
-    for tid in turmas:
-        grades_por_turma[tid] = [[None for _ in range(SLOTS_DIA)] for _ in range(DIAS)]
+    slots_por_dia_turma: dict[int, list[int]] = {}
+    for tid, turma in turmas.items():
+        grades_por_turma[tid] = [[None for _ in range(SLOTS_DIA_MAX)] for _ in range(DIAS)]
+        slots_por_dia_turma[tid] = list(turma.slots_por_dia or SLOTS_POR_DIA_DEFAULT)
     for a in alocacoes:
         cell = {
             "disciplina": discs.get(a.disciplina_id),
@@ -550,7 +610,8 @@ async def grade_detail(grade_id: int, request: Request, session: SessionDep):
             "sala": salas.get(a.sala_id) if a.sala_id else None,
         }
         if a.turma_id in grades_por_turma:
-            grades_por_turma[a.turma_id][a.dia][a.slot] = cell
+            if 0 <= a.dia < DIAS and 0 <= a.slot < SLOTS_DIA_MAX:
+                grades_por_turma[a.turma_id][a.dia][a.slot] = cell
 
     breakdown = None
     if alocacoes:
@@ -581,5 +642,6 @@ async def grade_detail(grade_id: int, request: Request, session: SessionDep):
         turmas=turmas,
         turmas_ordenadas=turmas_ordenadas,
         grades_por_turma=grades_por_turma,
+        slots_por_dia_turma=slots_por_dia_turma,
         breakdown=breakdown,
     )
