@@ -62,9 +62,14 @@ form?.addEventListener("submit", async (event) => {
     window.api.feedback(feedback, "Turma salva com sucesso.", "is-success");
     if (!id && result?.id) {
       setTimeout(() => (window.location.href = `/turmas/${result.id}`), 600);
-    } else if (id) {
-      // Recarrega para recomputar carga_alvo / currículo visível após a edição.
-      setTimeout(() => window.location.reload(), 600);
+      return;
+    }
+    // Edição: propaga o novo carga_alvo para todos os displays sem reload.
+    const novoAlvo = Array.isArray(result?.slots_por_dia)
+      ? result.slots_por_dia.reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0)
+      : (slotsPorDia ? slotsPorDia.reduce((a, b) => a + b, 0) : null);
+    if (novoAlvo !== null) {
+      setCargaAlvo(novoAlvo);
     }
   } catch (err) {
     window.api.feedback(feedback, err.message, "is-danger");
@@ -82,7 +87,21 @@ const cargaFill = cargaBar?.querySelector(".carga-fill");
 const cargaLabel = document.getElementById("carga-label");
 const cargaAtual = document.getElementById("carga-atual");
 const cargaStatus = document.getElementById("carga-status");
-const cargaAlvo = parseInt(curriculoForm?.dataset.cargaAlvo || "30", 10);
+const cargaAlvoLabel = document.getElementById("carga-alvo-label");
+const cargaAlvoHelp = document.getElementById("carga-alvo-help");
+const cargaAlvoSubtitle = document.getElementById("carga-alvo-subtitle");
+let cargaAlvo = parseInt(curriculoForm?.dataset.cargaAlvo || "30", 10);
+
+function setCargaAlvo(novoValor) {
+  const valor = parseInt(novoValor, 10);
+  if (!Number.isFinite(valor) || valor < 0) return;
+  cargaAlvo = valor;
+  if (curriculoForm) curriculoForm.dataset.cargaAlvo = String(valor);
+  if (cargaAlvoLabel) cargaAlvoLabel.textContent = String(valor);
+  if (cargaAlvoHelp) cargaAlvoHelp.textContent = String(valor);
+  if (cargaAlvoSubtitle) cargaAlvoSubtitle.textContent = String(valor);
+  recalcularCarga();
+}
 
 function parseAllowedProfessorIds(disciplinaSelect) {
   const opt = disciplinaSelect?.options[disciplinaSelect.selectedIndex];

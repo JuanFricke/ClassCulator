@@ -129,7 +129,8 @@
     <p class="subtitle is-6 has-text-grey">
       Escolha quais disciplinas a turma terá e o professor responsável por cada uma.
       Use o botão <strong>+ Adicionar disciplina</strong> para incluir as do
-      nível desta turma até fechar exatamente <strong>{{ carga_alvo }} aulas/semana</strong>.
+      nível desta turma até fechar exatamente
+      <strong><span id="carga-alvo-subtitle">{{ carga_alvo }}</span> aulas/semana</strong>.
     </p>
     {% if not disciplinas %}
       <article class="notification is-warning is-light">
@@ -154,7 +155,7 @@
           <strong>Carga semanal montada</strong>
           <span id="carga-status" class="has-text-grey">
             <span id="carga-atual">{{ carga_atual }}</span> de
-            {{ carga_alvo }} aulas
+            <span id="carga-alvo-label">{{ carga_alvo }}</span> aulas
           </span>
         </div>
         <div class="carga-progress" id="carga-bar">
@@ -162,7 +163,8 @@
           <span class="carga-label" id="carga-label">0 / {{ carga_alvo }}</span>
         </div>
         <p class="help has-text-grey mt-2">
-          Toda turma deve fechar exatamente <strong>{{ carga_alvo }} aulas/semana</strong>.
+          Toda turma deve fechar exatamente
+          <strong><span id="carga-alvo-help">{{ carga_alvo }}</span> aulas/semana</strong>.
           A grade não é gerada com currículo incompleto ou em excesso.
         </p>
       </div>
