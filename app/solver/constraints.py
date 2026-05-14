@@ -17,8 +17,7 @@ from app.solver.domain import (
     HC4_MIN_AULAS_QUARTA,
     HC6_MIN_AULAS_DIA,
     QUARTA,
-    SLOTS_DIA,
-    SLOTS_POR_TURMA,
+    SLOTS_DIA_MAX,
     ProblemInstance,
 )
 
@@ -63,16 +62,26 @@ def violacoes_hard(
         else:
             prof_slot[chave] = idx
 
-    # HC4 — cada turma com >= 3 aulas na quarta-feira
+    # HC4 — cada turma com >= HC4_MIN_AULAS_QUARTA aulas na quarta-feira (quando há
+    # slots suficientes na quarta para acomodar o mínimo).
     aulas_quarta: dict[int, int] = {t.id: 0 for t in instance.turmas}
     for idx, (dia, _slot) in assignments.items():
         a = by_aula[idx]
         if dia == QUARTA:
             aulas_quarta[a.turma_id] = aulas_quarta.get(a.turma_id, 0) + 1
-    for tid, qtd in aulas_quarta.items():
-        if qtd < HC4_MIN_AULAS_QUARTA:
+    for turma in instance.turmas:
+        slots_quarta = turma.slots_por_dia[QUARTA]
+        minimo = min(HC4_MIN_AULAS_QUARTA, slots_quarta)
+        qtd = aulas_quarta.get(turma.id, 0)
+        if qtd < minimo:
             violacoes.append(
-                f"HC4: turma {tid} tem apenas {qtd} aula(s) na quarta-feira (mínimo {HC4_MIN_AULAS_QUARTA})."
+                f"HC4: turma {turma.id} tem apenas {qtd} aula(s) na quarta-feira "
+                f"(mínimo {minimo} para slots_dia[quarta]={slots_quarta})."
+            )
+        if qtd > slots_quarta:
+            violacoes.append(
+                f"HC4: turma {turma.id} tem {qtd} aulas na quarta-feira mas só "
+                f"existem {slots_quarta} slots disponíveis."
             )
 
     # HC5 — professor disponível
@@ -83,7 +92,8 @@ def violacoes_hard(
                 f"HC5: professor {a.professor_id} indisponível em ({dia},{slot})."
             )
 
-    # HC6 — toda turma com >= 1 aula em cada dia
+    # HC6 — toda turma com >= HC6_MIN_AULAS_DIA aulas em cada dia útil
+    # (dias com slots_por_dia[d] == 0 são "sem expediente" e ficam livres por design).
     aulas_por_dia: dict[tuple[int, int], int] = {}
     for idx, (dia, _slot) in assignments.items():
         a = by_aula[idx]
@@ -91,22 +101,40 @@ def violacoes_hard(
         aulas_por_dia[chave] = aulas_por_dia.get(chave, 0) + 1
     for turma in instance.turmas:
         for dia in range(DIAS):
-            if aulas_por_dia.get((turma.id, dia), 0) < HC6_MIN_AULAS_DIA:
+            slots_dia = turma.slots_por_dia[dia]
+            qtd = aulas_por_dia.get((turma.id, dia), 0)
+            if slots_dia == 0:
+                if qtd > 0:
+                    violacoes.append(
+                        f"HC6: turma {turma.id} recebeu {qtd} aula(s) no dia {dia}, "
+                        "mas slots_por_dia[d]=0 (dia sem expediente)."
+                    )
+                continue
+            minimo = min(HC6_MIN_AULAS_DIA, slots_dia)
+            if qtd < minimo:
                 violacoes.append(
-                    f"HC6: turma {turma.id} sem aulas no dia {dia}."
+                    f"HC6: turma {turma.id} sem aulas no dia {dia} "
+                    f"(esperado pelo menos {minimo})."
+                )
+            if qtd > slots_dia:
+                violacoes.append(
+                    f"HC6: turma {turma.id} com {qtd} aulas no dia {dia}, "
+                    f"mas só existem {slots_dia} slots."
                 )
 
-    # HC7 — nenhuma célula (turma, dia, slot) pode ficar vazia
+    # HC7 — cada turma deve preencher EXATAMENTE total_slots períodos (sem janelas
+    # vazias dentro do expediente nem extrapolar a janela disponível).
     aulas_por_turma: dict[int, int] = {t.id: 0 for t in instance.turmas}
     for idx in assignments:
         a = by_aula[idx]
         aulas_por_turma[a.turma_id] = aulas_por_turma.get(a.turma_id, 0) + 1
     for turma in instance.turmas:
         qtd = aulas_por_turma.get(turma.id, 0)
-        if qtd < SLOTS_POR_TURMA:
+        alvo = turma.total_slots
+        if qtd != alvo:
             violacoes.append(
-                f"HC7: turma {turma.id} com {qtd} aulas (esperado {SLOTS_POR_TURMA}). "
-                "Existem horários sem aula na grade."
+                f"HC7: turma {turma.id} com {qtd} aulas (esperado {alvo}). "
+                "Currículo da turma deve totalizar exatamente sum(slots_por_dia) aulas."
             )
 
     return violacoes
@@ -168,7 +196,7 @@ def _sc2_areas_consecutivas(
 
     pares = 0
     for slots in grade_turma.values():
-        for s in range(SLOTS_DIA - 1):
+        for s in range(SLOTS_DIA_MAX - 1):
             if s in slots and (s + 1) in slots:
                 d1 = disc_by_id.get(slots[s])
                 d2 = disc_by_id.get(slots[s + 1])
@@ -196,7 +224,7 @@ def _sc3_blocos_teoricos(
     blocos = 0
     for slots in grade_turma.values():
         run = 0
-        for s in range(SLOTS_DIA):
+        for s in range(SLOTS_DIA_MAX):
             teorica = slots.get(s)
             if teorica is True:
                 run += 1
@@ -241,7 +269,7 @@ def _sc4_prof_turma_split(
 
 __all__ = [
     "DIAS",
-    "SLOTS_DIA",
+    "SLOTS_DIA_MAX",
     "PESO_SC1",
     "PESO_SC2",
     "PESO_SC3",

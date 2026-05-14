@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections import Counter
 
-from app.solver.domain import DIAS, SLOTS_DIA, ProblemInstance
+from app.solver.domain import DIAS, SLOTS_DIA_MAX, ProblemInstance
 
 DIAS_LABELS = ["segunda", "terça", "quarta", "quinta", "sexta"]
 
@@ -22,11 +22,11 @@ def necessary_condition_report(instance: ProblemInstance) -> str:
     prof_by_id = {p.id: p for p in instance.professores}
     for pid in profs_ativos:
         indisponiveis_prof = len(indisponiveis.get(pid, set()))
-        disponibilidade_total[pid] = (DIAS * SLOTS_DIA) - indisponiveis_prof
+        disponibilidade_total[pid] = (DIAS * SLOTS_DIA_MAX) - indisponiveis_prof
 
     sobrecarga: list[str] = []
     for pid, carga in aulas_por_prof.items():
-        capacidade = disponibilidade_total.get(pid, DIAS * SLOTS_DIA)
+        capacidade = disponibilidade_total.get(pid, DIAS * SLOTS_DIA_MAX)
         if carga > capacidade:
             nome = prof_by_id.get(pid).nome if pid in prof_by_id else f"id={pid}"
             sobrecarga.append(f"{nome}: carga={carga}, slots_disponiveis={capacidade}")
@@ -36,10 +36,16 @@ def necessary_condition_report(instance: ProblemInstance) -> str:
             + "; ".join(sobrecarga[:8])
         )
 
-    demanda_por_slot = len(instance.turmas)
+    # Demanda por (dia, slot) = quantidade de turmas que TÊM esse slot válido em
+    # seu slots_por_dia. Slots fora do expediente de qualquer turma têm demanda 0.
     gargalos_slot: list[str] = []
     for dia in range(DIAS):
-        for slot in range(SLOTS_DIA):
+        for slot in range(SLOTS_DIA_MAX):
+            demanda_por_slot = sum(
+                1 for t in instance.turmas if slot < t.slots_por_dia[dia]
+            )
+            if demanda_por_slot == 0:
+                continue
             capacidade_slot = sum(
                 1 for pid in profs_ativos if (dia, slot) not in indisponiveis.get(pid, set())
             )
