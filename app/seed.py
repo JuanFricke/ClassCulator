@@ -246,6 +246,7 @@ async def seed() -> None:
                 ensino=infer_turma_ensino(ident, "fundamental"),
                 semestre="2026/1",
                 qtd_alunos=30,
+                slots_por_dia=[6, 6, 6, 6, 6],
             )
             session.add(turma)
             await session.flush()
@@ -267,6 +268,7 @@ async def seed() -> None:
                 ensino=infer_turma_ensino(ident, "medio"),
                 semestre="2026/1",
                 qtd_alunos=32,
+                slots_por_dia=[6, 6, 6, 6, 6],
             )
             session.add(turma)
             await session.flush()
