@@ -12,6 +12,15 @@
     </ul>
   </nav>
 
+  {% if grade.log and "[autoajuste]" in grade.log %}
+    <article class="notification is-warning is-light no-print">
+      <strong>Aviso:</strong> durante a geração, alguns professores foram trocados automaticamente
+      para manter viabilidade com base em habilitação e disponibilidade.
+      Veja os detalhes em
+      <a href="#registro-tecnico-geracao"><em>Registro técnico da geração</em></a>.
+    </article>
+  {% endif %}
+
   <div class="level is-mobile">
     <div class="level-left">
       <div>
@@ -121,7 +130,6 @@
           </div>
         </div>
       </div>
-
       <div class="area-legend mt-2">
         <strong class="mr-2 has-text-grey">Legenda de áreas:</strong>
         <span><span class="swatch" style="background:#e3f2ff;"></span>Exatas</span>
@@ -132,7 +140,15 @@
       </div>
     </div>
 
+    <div class="mb-2 no-print">
+      <button id="grade-orientation-toggle" class="button is-light is-small" type="button" aria-pressed="false">
+        Dias na horizontal
+      </button>
+    </div>
+
     {% for turma in turmas_ordenadas %}
+      {% set turma_slots = slots_por_dia_turma[turma.id] %}
+      {% set max_slot_turma = turma_slots | max %}
       <section class="turma-block mt-5" data-turma-id="turma-{{ turma.id }}">
         <h2 class="title is-4">
           {{ icon("users", "mr-2") }}Turma {{ turma.identificador }}
@@ -143,27 +159,33 @@
               <tr>
                 <th></th>
                 {% for dia in DIAS %}
-                  <th>{{ DIAS_LABELS[dia] }}</th>
+                  <th>{{ DIAS_LABELS[dia] }}{% if turma_slots[dia] == 0 %} <span class="tag is-light is-small ml-1">sem aula</span>{% endif %}</th>
                 {% endfor %}
               </tr>
             </thead>
             <tbody>
               {% for slot in SLOTS %}
+                {% if slot < max_slot_turma %}
                 <tr>
                   <th class="grade-day" scope="row">{{ SLOT_LABELS[slot] }}</th>
                   {% for dia in DIAS %}
                     {% set cell = grades_por_turma[turma.id][dia][slot] %}
-                    <td class="grade-cell" data-area="{{ cell.disciplina.area if cell else '' }}">
-                      {% if cell %}
-                        <strong>{{ cell.disciplina.nome }}</strong>
-                        <span>{{ cell.professor.nome }}</span>
-                        {% if cell.sala %}<span class="cell-room">{{ cell.sala.nome }}</span>{% endif %}
-                      {% else %}
-                        <span class="has-text-grey-light">—</span>
-                      {% endif %}
-                    </td>
+                    {% if slot >= turma_slots[dia] %}
+                      <td class="grade-cell grade-cell--off" aria-label="fora do expediente"></td>
+                    {% else %}
+                      <td class="grade-cell" data-area="{{ cell.disciplina.area if cell else '' }}">
+                        {% if cell %}
+                          <strong>{{ cell.disciplina.nome }}</strong>
+                          <span>{{ cell.professor.nome }}</span>
+                          {% if cell.sala %}<span class="cell-room">{{ cell.sala.nome }}</span>{% endif %}
+                        {% else %}
+                          <span class="has-text-grey-light">—</span>
+                        {% endif %}
+                      </td>
+                    {% endif %}
                   {% endfor %}
                 </tr>
+                {% endif %}
               {% endfor %}
             </tbody>
           </table>
@@ -172,7 +194,7 @@
     {% endfor %}
 
     {% if grade.log %}
-      <details class="mt-5 no-print">
+      <details class="mt-5 no-print" id="registro-tecnico-geracao">
         <summary class="has-text-grey">Registro técnico da geração</summary>
         <pre class="mt-2" style="font-size: 0.78rem; max-height: 16rem; overflow: auto;">{{ grade.log }}</pre>
       </details>

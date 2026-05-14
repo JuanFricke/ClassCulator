@@ -121,37 +121,240 @@ main {
 
 /* ---------- escolha de modo (cards) ---------- */
 .mode-card {
+  position: relative;
   border: 2px solid var(--cc-border);
-  border-radius: 10px;
-  padding: 1.25rem;
+  border-radius: 14px;
+  padding: 1.5rem 1.5rem 1.35rem;
   cursor: pointer;
-  transition: border-color 0.12s, box-shadow 0.12s;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease,
+              transform 0.18s ease, background-color 0.18s ease;
   background: #fff;
   display: block;
   height: 100%;
+  overflow: hidden;
 }
-.mode-card:hover { border-color: #c8d4ea; }
-.mode-card input[type="radio"] { display: none; }
+.mode-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 4px;
+  background: transparent;
+  transition: background-color 0.18s ease;
+}
+.mode-card:hover {
+  border-color: #c8d4ea;
+  box-shadow: 0 6px 18px rgba(15, 30, 60, 0.06);
+  transform: translateY(-2px);
+}
+.mode-card input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.mode-card input[type="radio"]:focus-visible + .mode-badge,
+.mode-card:focus-within {
+  outline: 2px solid #3273dc;
+  outline-offset: 3px;
+}
+
+.mode-card .mode-badge {
+  position: absolute;
+  top: 0.85rem;
+  right: 0.85rem;
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  font-weight: 700;
+  background: linear-gradient(135deg, #2bb673, #1f9c5f);
+  color: #fff;
+  padding: 0.3rem 0.7rem;
+  border-radius: 99px;
+  letter-spacing: 0.06em;
+  box-shadow: 0 2px 6px rgba(31, 156, 95, 0.25);
+}
+
+.mode-card .mode-check {
+  position: absolute;
+  top: 0.85rem;
+  right: 0.85rem;
+  width: 1.85rem;
+  height: 1.85rem;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #e9eef7;
+  color: transparent;
+  border: 1px solid var(--cc-border);
+  transition: background-color 0.18s ease, color 0.18s ease,
+              border-color 0.18s ease, transform 0.18s ease;
+}
+.mode-card--primary .mode-check { display: none; }
+
+.mode-card-head {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  margin-bottom: 0.85rem;
+  padding-right: 5.5rem;
+}
+.mode-card .mode-icon {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #eef3fb;
+  color: #3273dc;
+  flex: 0 0 auto;
+  transition: background-color 0.18s ease, color 0.18s ease;
+}
+.mode-card .mode-icon .cc-icon {
+  width: 1.4rem;
+  height: 1.4rem;
+}
+.mode-card h3 { font-weight: 700; }
+.mode-card .mode-desc {
+  color: var(--cc-text-muted);
+  font-size: 0.92rem;
+  line-height: 1.5;
+  margin-bottom: 0;
+}
+
 .mode-card.is-selected,
 .mode-card:has(input:checked) {
   border-color: #3273dc;
-  box-shadow: 0 2px 10px rgba(50, 115, 220, 0.15);
-  background: #f0f6ff;
+  background: linear-gradient(180deg, #f6faff 0%, #ffffff 65%);
+  box-shadow: 0 8px 24px rgba(50, 115, 220, 0.18);
+  transform: translateY(-2px);
 }
-.mode-card .mode-badge {
-  display: inline-block;
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  font-weight: 700;
-  background: #257953;
+.mode-card.is-selected::before,
+.mode-card:has(input:checked)::before {
+  background: linear-gradient(90deg, #3273dc, #5aa1ff);
+}
+.mode-card.is-selected .mode-icon,
+.mode-card:has(input:checked) .mode-icon {
+  background: #3273dc;
   color: #fff;
-  padding: 0.15rem 0.55rem;
-  border-radius: 99px;
-  letter-spacing: 0.03em;
-  margin-bottom: 0.35rem;
 }
-.mode-card h3 { margin-bottom: 0.35rem; font-weight: 700; }
-.mode-card p { color: var(--cc-text-muted); font-size: 0.92rem; }
+.mode-card.is-selected .mode-check,
+.mode-card:has(input:checked) .mode-check {
+  background: #3273dc;
+  border-color: #3273dc;
+  color: #fff;
+  transform: scale(1.05);
+}
+
+.mode-card .mode-time-control {
+  margin: 1.1rem -1.5rem -1.35rem;
+  border-top: 1px solid #dde6f4;
+  padding: 1rem 0 1rem;
+  background: rgba(247, 250, 255, 0.6);
+}
+.mode-time-header,
+.mode-time-labels {
+  padding: 0 1.25rem;
+}
+.mode-time-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.6rem;
+}
+
+/* slider customizado com ticks (edge-to-edge no card) */
+.mode-slider {
+  position: relative;
+  padding: 0.25rem 0.5rem 1.1rem;
+}
+.mode-slider-input {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  width: 100%;
+  height: 24px;
+  background: transparent;
+  outline: none;
+  cursor: pointer;
+  margin: 0;
+  padding: 0;
+}
+.mode-slider-input::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(to right, #3273dc 0%, #3273dc var(--cc-slider-fill, 0%),
+                              #dbe4f3 var(--cc-slider-fill, 0%), #dbe4f3 100%);
+}
+.mode-slider-input::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(to right, #3273dc 0%, #3273dc var(--cc-slider-fill, 0%),
+                              #dbe4f3 var(--cc-slider-fill, 0%), #dbe4f3 100%);
+}
+.mode-slider-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  margin-top: -7px;
+  border-radius: 50%;
+  background: #fff;
+  border: 3px solid #3273dc;
+  box-shadow: 0 2px 6px rgba(50, 115, 220, 0.35);
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.mode-slider-input::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  border: 3px solid #3273dc;
+  box-shadow: 0 2px 6px rgba(50, 115, 220, 0.35);
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.mode-slider-input:hover::-webkit-slider-thumb,
+.mode-slider-input:focus-visible::-webkit-slider-thumb { transform: scale(1.12); box-shadow: 0 3px 10px rgba(50, 115, 220, 0.45); }
+.mode-slider-input:hover::-moz-range-thumb,
+.mode-slider-input:focus-visible::-moz-range-thumb { transform: scale(1.12); box-shadow: 0 3px 10px rgba(50, 115, 220, 0.45); }
+
+.mode-slider-ticks {
+  position: absolute;
+  left: calc(0.5rem + 10px);
+  right: calc(0.5rem + 10px);
+  bottom: 0.2rem;
+  display: flex;
+  justify-content: space-between;
+  pointer-events: none;
+}
+.mode-slider-tick {
+  width: 2px;
+  height: 6px;
+  border-radius: 1px;
+  background: #c5d2e7;
+}
+.mode-slider-tick.is-major {
+  height: 10px;
+  background: #8aa3cc;
+}
+
+.mode-time-labels {
+  display: flex;
+  justify-content: space-between;
+  color: var(--cc-text-muted);
+  font-size: 0.78rem;
+  margin-top: 0.1rem;
+}
+
+@media (max-width: 768px) {
+  .mode-card { padding: 1.25rem; }
+  .mode-card-head { padding-right: 0; }
+  .mode-card .mode-badge { position: static; margin-bottom: 0.6rem; display: inline-flex; }
+  .mode-card .mode-check { top: 0.75rem; right: 0.75rem; }
+}
 
 /* ---------- qualidade ---------- */
 .quality-badge {
@@ -163,6 +366,52 @@ main {
 .quality-stars {
   font-size: 1.1em;
   letter-spacing: 0.06em;
+}
+
+/* ---------- períodos por dia (slots_por_dia da turma) ---------- */
+.slots-por-dia-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) minmax(0, 1.4fr);
+  gap: 0.6rem;
+  align-items: end;
+}
+.slots-por-dia-cell {
+  background: #fff;
+  border: 1px solid var(--cc-border);
+  border-radius: 8px;
+  padding: 0.55rem 0.55rem 0.6rem;
+}
+.slots-por-dia-cell .label {
+  margin-bottom: 0.3rem !important;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--cc-text-muted);
+}
+.slots-por-dia-cell .input {
+  font-weight: 600;
+  font-size: 1.05rem;
+}
+.slots-por-dia-total {
+  background: #f6f9ff;
+  border-color: #d2deef;
+  text-align: center;
+}
+.slots-por-dia-total-value {
+  font-size: 1.6rem;
+  line-height: 1.1;
+  padding-top: 0.15rem;
+}
+.slots-por-dia-total-value strong {
+  color: #1f4fa3;
+}
+@media (max-width: 768px) {
+  .slots-por-dia-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .slots-por-dia-total {
+    grid-column: 1 / -1;
+  }
 }
 
 /* ---------- carga horária / progresso de currículo ---------- */
@@ -224,6 +473,21 @@ main {
   display: block;
   margin-top: 2px;
 }
+
+/* Células fora do expediente daquela turma (slots_por_dia[d] = 0 ou slot > slots_por_dia[d]). */
+.grade-cell--off {
+  background: repeating-linear-gradient(
+    45deg,
+    #f6f7fb,
+    #f6f7fb 6px,
+    #eef0f7 6px,
+    #eef0f7 12px
+  ) !important;
+  color: transparent;
+  border: 1px dashed #d4d8e3 !important;
+  cursor: default;
+}
+.grade-cell--off * { display: none !important; }
 
 /* Áreas (com legenda) */
 .grade-cell[data-area="exatas"]     { background-color: #e3f2ff; }
