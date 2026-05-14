@@ -27,6 +27,7 @@ async def _serialize(session, turma: Turma) -> TurmaRead:
             "ensino": turma.ensino,
             "semestre": turma.semestre,
             "qtd_alunos": turma.qtd_alunos,
+            "slots_por_dia": list(turma.slots_por_dia),
             "curriculo": [c.model_dump() for c in curriculo],
         }
     )
@@ -133,12 +134,13 @@ async def set_curriculo(
                     f"não pode ser vinculada a uma turma do ensino {obj.ensino}."
                 ),
             )
-    if carga_total > 30:
+    alvo_carga = sum(obj.slots_por_dia or [])
+    if alvo_carga and carga_total > alvo_carga:
         raise HTTPException(
             status_code=422,
             detail=(
                 f"A carga total do currículo ficou em {carga_total} aulas/semana, "
-                "acima do máximo permitido de 30."
+                f"acima do máximo permitido de {alvo_carga} (sum(slots_por_dia) da turma)."
             ),
         )
 
