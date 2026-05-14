@@ -1,12 +1,16 @@
 """Solver baseado em OR-Tools CP-SAT.
 
 Modelagem:
-- Para cada aula `a` e cada `(dia, slot)`, cria-se uma variável booleana `x[a,d,s]`.
+- Para cada aula `a` e cada `(dia, slot)` no grid `DIAS × SLOTS_DIA_MAX`,
+  cria-se uma variável booleana `x[a,d,s]`. Variáveis em células fora do
+  `slots_por_dia` da turma (ou indisponíveis ao professor) são forçadas a 0.
 - HC1: `sum_{d,s} x[a,d,s] == 1` (cada aula é alocada exatamente uma vez).
-- HC2: para cada (turma, d, s), `sum_{a in turma} x[a,d,s] <= 1`.
+- HC2 + HC7: para cada (turma, d, s) VÁLIDO da turma,
+  `sum_{a in turma} x[a,d,s] == 1` (sem janelas vazias dentro do expediente).
 - HC3: para cada (professor, d, s), `sum_{a do prof} x[a,d,s] <= 1`.
-- HC4: para cada turma, `sum_{a in turma, d=QUARTA, s} x[a,d,s] >= 3`.
+- HC4: para cada turma, `sum_{a in turma, d=QUARTA, s} x[a,d,s] >= min(HC4_MIN, slots_quarta)`.
 - HC5: para `(d,s)` indisponíveis ao professor da aula, `x[a,d,s] = 0`.
+- HC6: para cada turma e dia útil, `sum >= min(HC6_MIN, slots_dia)`.
 
 Soft constraints expressas como variáveis auxiliares na função objetivo.
 """
@@ -31,7 +35,7 @@ from app.solver.domain import (
     HC4_MIN_AULAS_QUARTA,
     HC6_MIN_AULAS_DIA,
     QUARTA,
-    SLOTS_DIA,
+    SLOTS_DIA_MAX,
     ProblemInstance,
     SolverResult,
     SolverStatus,
@@ -52,59 +56,80 @@ def solve_cpsat(
     aulas = instance.aulas
     log_lines: list[str] = []
 
+    turma_by_id = {t.id: t for t in instance.turmas}
+
+    # Variáveis x[a,d,s] criadas para todo o grid DIAS × SLOTS_DIA_MAX.
+    # Forçamos x = 0 onde:
+    #   - o slot (d, s) está fora do `slots_por_dia` da turma da aula; ou
+    #   - o professor está indisponível em (d, s) (HC5).
     x: dict[tuple[int, int, int], cp_model.IntVar] = {}
     for a in aulas:
         prof_indisp = instance.indisponiveis.get(a.professor_id, set())
+        turma = turma_by_id.get(a.turma_id)
+        slots_por_dia = turma.slots_por_dia if turma is not None else ()
         for d in range(DIAS):
-            for s in range(SLOTS_DIA):
+            slots_validos_no_dia = slots_por_dia[d] if d < len(slots_por_dia) else 0
+            for s in range(SLOTS_DIA_MAX):
                 var = model.NewBoolVar(f"x_a{a.idx}_d{d}_s{s}")
                 x[(a.idx, d, s)] = var
-                if (d, s) in prof_indisp:
+                if s >= slots_validos_no_dia:
+                    model.Add(var == 0)  # slot fora do expediente da turma
+                elif (d, s) in prof_indisp:
                     model.Add(var == 0)  # HC5
 
-    # HC1 — exatamente uma alocação por aula (carga semanal = nº de aulas-instância).
+    # HC1 — exatamente uma alocação por aula.
     for a in aulas:
-        model.Add(sum(x[(a.idx, d, s)] for d in range(DIAS) for s in range(SLOTS_DIA)) == 1)
+        model.Add(
+            sum(x[(a.idx, d, s)] for d in range(DIAS) for s in range(SLOTS_DIA_MAX)) == 1
+        )
 
-    # HC2 + HC7 — cada (turma, dia, slot) ocupado por exatamente uma aula.
-    # (HC2 = no máximo 1; HC7 = pelo menos 1 — combinados implicam == 1.
-    # A consistência só é possível porque o builder valida que cada turma
-    # tem exatamente DIAS*SLOTS_DIA aulas no currículo.)
+    # HC2 + HC7 — cada (turma, dia, slot) VÁLIDO ocupado por exatamente uma aula.
+    # Para slots fora do expediente, todas as variáveis x já estão forçadas a 0,
+    # de modo que nenhuma aula pode cair lá.
     for t in instance.turmas:
         idxs = [a.idx for a in aulas if a.turma_id == t.id]
         if not idxs:
             continue
         for d in range(DIAS):
-            for s in range(SLOTS_DIA):
+            slots_validos = t.slots_por_dia[d] if d < len(t.slots_por_dia) else 0
+            for s in range(slots_validos):
                 model.Add(sum(x[(i, d, s)] for i in idxs) == 1)
 
-    # HC3 — exclusividade de professor por slot.
+    # HC3 — exclusividade de professor por slot (em todo o grid).
     profs = {a.professor_id for a in aulas}
     for pid in profs:
         idxs = [a.idx for a in aulas if a.professor_id == pid]
         for d in range(DIAS):
-            for s in range(SLOTS_DIA):
+            for s in range(SLOTS_DIA_MAX):
                 model.Add(sum(x[(i, d, s)] for i in idxs) <= 1)
 
-    # HC4 — cada turma tem pelo menos HC4_MIN_AULAS_QUARTA aulas na quarta-feira.
+    # HC4 — cada turma tem pelo menos min(HC4_MIN, slots_quarta) aulas na quarta.
+    # Quando slots_quarta == 0, a restrição é trivialmente satisfeita.
     for t in instance.turmas:
         idxs = [a.idx for a in aulas if a.turma_id == t.id]
         if not idxs:
             continue
+        slots_quarta = t.slots_por_dia[QUARTA] if QUARTA < len(t.slots_por_dia) else 0
+        minimo = min(HC4_MIN_AULAS_QUARTA, slots_quarta)
+        if minimo <= 0:
+            continue
         model.Add(
-            sum(x[(i, QUARTA, s)] for i in idxs for s in range(SLOTS_DIA))
-            >= HC4_MIN_AULAS_QUARTA
+            sum(x[(i, QUARTA, s)] for i in idxs for s in range(slots_quarta)) >= minimo
         )
 
-    # HC6 — cada turma com pelo menos HC6_MIN_AULAS_DIA aulas em cada dia.
+    # HC6 — cada turma com pelo menos min(HC6_MIN, slots_dia) aulas em cada dia
+    # útil. Dias com slots_por_dia[d] == 0 ficam livres por design.
     for t in instance.turmas:
         idxs = [a.idx for a in aulas if a.turma_id == t.id]
         if not idxs:
             continue
         for d in range(DIAS):
+            slots_dia = t.slots_por_dia[d] if d < len(t.slots_por_dia) else 0
+            minimo = min(HC6_MIN_AULAS_DIA, slots_dia)
+            if minimo <= 0:
+                continue
             model.Add(
-                sum(x[(i, d, s)] for i in idxs for s in range(SLOTS_DIA))
-                >= HC6_MIN_AULAS_DIA
+                sum(x[(i, d, s)] for i in idxs for s in range(slots_dia)) >= minimo
             )
 
     objective_terms = _build_objective(model, instance, x)
@@ -128,7 +153,7 @@ def solve_cpsat(
         assignments: dict[int, tuple[int, int]] = {}
         for a in aulas:
             for d in range(DIAS):
-                for s in range(SLOTS_DIA):
+                for s in range(SLOTS_DIA_MAX):
                     if solver.Value(x[(a.idx, d, s)]) == 1:
                         assignments[a.idx] = (d, s)
                         break
@@ -169,7 +194,8 @@ def _build_objective(
     for t in instance.turmas:
         aulas_turma = [a for a in instance.aulas if a.turma_id == t.id]
         for d in range(DIAS):
-            for s in range(SLOTS_DIA - 1):
+            slots_dia = t.slots_por_dia[d] if d < len(t.slots_por_dia) else 0
+            for s in range(max(slots_dia - 1, 0)):
                 pair_terms: list[cp_model.IntVar] = []
                 for a1 in aulas_turma:
                     d1 = disc_by_id[a1.disciplina_id]
@@ -196,11 +222,11 @@ def _build_objective(
     for pid in profs:
         idxs = [a.idx for a in instance.aulas if a.professor_id == pid]
         for d in range(DIAS):
-            qtd = sum(x[(i, d, s)] for i in idxs for s in range(SLOTS_DIA))
+            qtd = sum(x[(i, d, s)] for i in idxs for s in range(SLOTS_DIA_MAX))
 
             primeiro_marks = []
             ultimo_marks = []
-            for s in range(SLOTS_DIA):
+            for s in range(SLOTS_DIA_MAX):
                 tem_aula_s = sum(x[(i, d, s)] for i in idxs)
 
                 e_primeiro = model.NewBoolVar(f"sc1_first_p{pid}_d{d}_s{s}")
@@ -212,9 +238,9 @@ def _build_objective(
 
                 e_ultimo = model.NewBoolVar(f"sc1_last_p{pid}_d{d}_s{s}")
                 model.Add(tem_aula_s >= 1).OnlyEnforceIf(e_ultimo)
-                if s < SLOTS_DIA - 1:
+                if s < SLOTS_DIA_MAX - 1:
                     posteriores = sum(
-                        x[(i, d, sb)] for i in idxs for sb in range(s + 1, SLOTS_DIA)
+                        x[(i, d, sb)] for i in idxs for sb in range(s + 1, SLOTS_DIA_MAX)
                     )
                     model.Add(posteriores == 0).OnlyEnforceIf(e_ultimo)
 
@@ -227,7 +253,7 @@ def _build_objective(
             model.Add(qtd >= 1).OnlyEnforceIf(tem_aula_no_dia)
             model.Add(qtd == 0).OnlyEnforceIf(tem_aula_no_dia.Not())
 
-            janelas = model.NewIntVar(0, SLOTS_DIA, f"sc1_gap_p{pid}_d{d}")
+            janelas = model.NewIntVar(0, SLOTS_DIA_MAX, f"sc1_gap_p{pid}_d{d}")
             model.Add(janelas == ultimo_idx - primeiro_idx + tem_aula_no_dia - qtd)
             model.Add(janelas >= 0)
             terms.append(PESO_SC1 * janelas)
@@ -241,7 +267,8 @@ def _build_objective(
         if not aulas_turma_teorica:
             continue
         for d in range(DIAS):
-            for s in range(SLOTS_DIA - 2):
+            slots_dia = t.slots_por_dia[d] if d < len(t.slots_por_dia) else 0
+            for s in range(max(slots_dia - 2, 0)):
                 bloco = model.NewBoolVar(f"sc3_t{t.id}_d{d}_s{s}")
                 soma_3 = sum(
                     x[(a.idx, d, s + offset)]
@@ -267,7 +294,7 @@ def _build_objective(
 
         for d in range(DIAS):
             blocos = []
-            for s in range(SLOTS_DIA):
+            for s in range(SLOTS_DIA_MAX):
                 tem_aula_s = sum(x[(a.idx, d, s)] for a in aulas_pt)
                 bloco_s = model.NewBoolVar(f"sc4_block_p{pid}_t{tid}_d{d}_s{s}")
                 if s == 0:
@@ -280,12 +307,12 @@ def _build_objective(
                     model.Add(bloco_s <= 1 - tem_aula_prev)
                 blocos.append(bloco_s)
 
-            qtd = sum(x[(a.idx, d, s)] for a in aulas_pt for s in range(SLOTS_DIA))
+            qtd = sum(x[(a.idx, d, s)] for a in aulas_pt for s in range(SLOTS_DIA_MAX))
             tem_aula_no_dia = model.NewBoolVar(f"sc4_any_p{pid}_t{tid}_d{d}")
             model.Add(qtd >= 1).OnlyEnforceIf(tem_aula_no_dia)
             model.Add(qtd == 0).OnlyEnforceIf(tem_aula_no_dia.Not())
 
-            splits = model.NewIntVar(0, SLOTS_DIA, f"sc4_splits_p{pid}_t{tid}_d{d}")
+            splits = model.NewIntVar(0, SLOTS_DIA_MAX, f"sc4_splits_p{pid}_t{tid}_d{d}")
             # splits = (nº de blocos) - 1 quando há aula no dia, 0 caso contrário.
             model.Add(splits == sum(blocos) - tem_aula_no_dia)
             model.Add(splits >= 0)
