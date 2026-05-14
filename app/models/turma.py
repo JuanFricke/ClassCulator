@@ -1,7 +1,18 @@
 from sqlalchemy import ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
+
+
+def _default_slots_por_dia() -> list[int]:
+    """Default usado quando a aplicação não informa explicitamente.
+
+    Casa com a grade retangular do dataset EFA (5 dias × 6 slots = 30 períodos),
+    garantindo compatibilidade com o solver clássico.
+    """
+
+    return [6, 6, 6, 6, 6]
 
 
 class Turma(Base):
@@ -12,6 +23,9 @@ class Turma(Base):
     ensino: Mapped[str] = mapped_column(String(20), nullable=False, default="fundamental")
     semestre: Mapped[str] = mapped_column(String(20), nullable=False, default="2026/1")
     qtd_alunos: Mapped[int] = mapped_column(Integer, nullable=False, default=30)
+    slots_por_dia: Mapped[list[int]] = mapped_column(
+        JSONB, nullable=False, default=_default_slots_por_dia
+    )
 
 
 class TurmaDisciplina(Base):
