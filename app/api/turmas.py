@@ -111,7 +111,6 @@ async def set_curriculo(
             )
     disciplina_ids = [item.disciplina_id for item in payload.items]
     disciplinas = {}
-    carga_total = 0
     if disciplina_ids:
         disciplinas = {
             d.id: d
@@ -121,6 +120,36 @@ async def set_curriculo(
                 )
             ).scalars().all()
         }
+
+    # A unique constraint (turma_id, disciplina_id) impede duplicar a mesma
+    # disciplina no currículo. Detectamos isso aqui para devolver 422 com uma
+    # mensagem clara em vez de deixar estourar o IntegrityError do INSERT.
+    vistos: set[int] = set()
+    duplicadas_ids: list[int] = []
+    for did in disciplina_ids:
+        if did in vistos:
+            duplicadas_ids.append(did)
+        else:
+            vistos.add(did)
+    if duplicadas_ids:
+        nomes = sorted(
+            {
+                disciplinas[did].nome
+                for did in duplicadas_ids
+                if did in disciplinas
+            }
+        )
+        rotulo = ", ".join(nomes) if nomes else "(desconhecidas)"
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Há disciplinas repetidas no currículo: {rotulo}. "
+                "Cada disciplina deve aparecer apenas uma vez por turma; "
+                "para mais aulas semanais ajuste a carga_semanal da disciplina."
+            ),
+        )
+
+    carga_total = 0
     for item in payload.items:
         disciplina = disciplinas.get(item.disciplina_id)
         if disciplina is None:

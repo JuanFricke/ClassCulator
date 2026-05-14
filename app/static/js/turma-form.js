@@ -185,12 +185,32 @@ function bindRow(row) {
   syncProfessorOptions(row);
 }
 
+function disciplinasJaUsadas() {
+  const ids = new Set();
+  tableBody?.querySelectorAll("select[name=disciplina_id]").forEach((sel) => {
+    if (sel.value) ids.add(sel.value);
+  });
+  return ids;
+}
+
+function escolherDisciplinaInedita(select) {
+  if (!select) return;
+  const usadas = disciplinasJaUsadas();
+  const opcoes = Array.from(select.options);
+  const inedita = opcoes.find(
+    (opt) => opt.value && !usadas.has(opt.value) && !opt.disabled,
+  );
+  if (inedita) select.value = inedita.value;
+}
+
 document.querySelectorAll("#curriculo-table tbody tr").forEach(bindRow);
 recalcularCarga();
 
 addBtn?.addEventListener("click", () => {
   const fragment = rowTemplate.content.cloneNode(true);
   const row = fragment.querySelector("tr");
+  const disciplinaSelect = row.querySelector("select[name=disciplina_id]");
+  escolherDisciplinaInedita(disciplinaSelect);
   bindRow(row);
   tableBody.appendChild(row);
   recalcularCarga();
@@ -213,6 +233,26 @@ curriculoForm?.addEventListener("submit", async (event) => {
     window.api.feedback(
       curriculoFeedback,
       "Cada disciplina deve ter um professor habilitado para ela antes de salvar.",
+      "is-danger",
+    );
+    return;
+  }
+  const disciplinaIds = items.map((it) => it.disciplina_id);
+  const duplicadas = disciplinaIds.filter(
+    (id, idx) => disciplinaIds.indexOf(id) !== idx,
+  );
+  if (duplicadas.length > 0) {
+    const nomes = new Set();
+    tableBody.querySelectorAll("select[name=disciplina_id]").forEach((sel) => {
+      if (!duplicadas.includes(parseInt(sel.value, 10))) return;
+      const opt = sel.options[sel.selectedIndex];
+      const texto = (opt?.textContent || "").trim();
+      if (texto) nomes.add(texto.split(" (")[0]);
+    });
+    const rotulo = Array.from(nomes).join(", ") || "(verifique a lista)";
+    window.api.feedback(
+      curriculoFeedback,
+      `Disciplinas repetidas no currículo: ${rotulo}. Cada disciplina deve aparecer apenas uma vez por turma.`,
       "is-danger",
     );
     return;
