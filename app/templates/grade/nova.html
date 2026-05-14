@@ -47,49 +47,76 @@
 
     <div class="field mt-4">
       <label class="label">Como gerar?</label>
-      <div class="columns">
+      <div class="columns is-variable is-4">
         <div class="column is-6">
-          <label class="mode-card">
+          <label class="mode-card mode-card--primary">
             <input type="radio" name="solver" value="cpsat" checked />
-            <span class="mode-badge">Recomendado</span>
-            <h3 class="title is-5 mt-0">
-              {{ icon("wand", "mr-1") }} Modo otimizado
-            </h3>
-            <p>
-              Procura a melhor combinação possível dentro do tempo limite.
-              Demora um pouco mais, mas gera grades com muito menos janelas vazias
-              e mais agrupamentos.
+            <span class="mode-badge">
+              {{ icon("star", "mr-1") }} Recomendado
+            </span>
+            <span class="mode-check" aria-hidden="true">
+              {{ icon("check") }}
+            </span>
+            <div class="mode-card-head">
+              <span class="mode-icon">{{ icon("wand") }}</span>
+              <h3 class="title is-5 mb-0">Modo otimizado</h3>
+            </div>
+            <p class="mode-desc">
+              Procura a melhor combinação possível dentro do tempo limite,
+              gerando grades com menos janelas vazias e mais agrupamentos.
             </p>
+            <div class="mode-time-control">
+              <div class="mode-time-header">
+                <strong>Tempo de busca</strong>
+                <span id="timeout-value" class="tag is-link is-light is-medium has-text-weight-semibold">1,0 min</span>
+              </div>
+              <div class="mode-slider">
+                <input
+                  id="grade-timeout-slider"
+                  class="mode-slider-input"
+                  type="range"
+                  min="1"
+                  max="20"
+                  step="1"
+                  value="1"
+                  list="grade-timeout-ticks"
+                  oninput="window.syncTimeoutFromSlider && window.syncTimeoutFromSlider()"
+                />
+                <div class="mode-slider-ticks" aria-hidden="true">
+                  {% for i in range(20) %}
+                    <span class="mode-slider-tick {% if i % 5 == 0 or i == 19 %}is-major{% endif %}"></span>
+                  {% endfor %}
+                </div>
+                <datalist id="grade-timeout-ticks">
+                  {% for i in range(1, 21) %}<option value="{{ i }}"></option>{% endfor %}
+                </datalist>
+              </div>
+              <div class="mode-time-labels">
+                <span>1 min</span>
+                <span>10 min</span>
+              </div>
+            </div>
           </label>
         </div>
         <div class="column is-6">
-          <label class="mode-card">
+          <label class="mode-card mode-card--secondary">
             <input type="radio" name="solver" value="classic" />
-            <h3 class="title is-5 mt-0">
-              {{ icon("play", "mr-1") }} Modo rápido
-            </h3>
-            <p>
-              Gera uma primeira versão funcional em segundos. Ideal para
-              testar mudanças ou ver rapidamente uma grade preliminar.
+            <span class="mode-check" aria-hidden="true">
+              {{ icon("check") }}
+            </span>
+            <div class="mode-card-head">
+              <span class="mode-icon">{{ icon("play") }}</span>
+              <h3 class="title is-5 mb-0">Modo checagem</h3>
+            </div>
+            <p class="mode-desc">
+              Roda sem limite de tempo at&eacute; encontrar a primeira op&ccedil;&atilde;o
+              vi&aacute;vel. Ideal para validar se a configura&ccedil;&atilde;o fecha.
             </p>
           </label>
         </div>
       </div>
     </div>
-
-    <div class="field mt-3">
-      <label class="label" for="grade-timeout">Tempo máximo de cálculo</label>
-      <div class="field has-addons">
-        <div class="control">
-          <input id="grade-timeout" class="input" type="number" name="timeout_s" min="5" max="600" value="30" style="max-width: 8rem;" />
-        </div>
-        <div class="control"><span class="button is-static">segundos</span></div>
-      </div>
-      <p class="help has-text-grey">
-        Mais tempo costuma gerar uma grade melhor no modo otimizado.
-        Para um colégio inteiro, 60 a 120 segundos é o ideal.
-      </p>
-    </div>
+    <input type="hidden" name="timeout_s" id="grade-timeout" value="60" />
 
     {% if not readiness.tudo_pronto %}
       <article class="notification is-warning is-light">
@@ -119,5 +146,5 @@
 {% endblock %}
 
 {% block scripts %}
-  <script src="/static/js/grade-poll.js" defer></script>
+  <script src="/static/js/grade-poll.js?v=4" defer></script>
 {% endblock %}

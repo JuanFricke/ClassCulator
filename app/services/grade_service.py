@@ -45,7 +45,9 @@ async def create_pending_grade(
     return grade
 
 
-async def run_grade_generation(grade_id: int, solver_id: str, timeout_s: int) -> None:
+async def run_grade_generation(
+    grade_id: int, solver_id: str, timeout_s: int | None
+) -> None:
     """Executa o solver e persiste o resultado.
 
     Roda como FastAPI BackgroundTask em uma sessão própria.
@@ -62,12 +64,14 @@ async def run_grade_generation(grade_id: int, solver_id: str, timeout_s: int) ->
             await session.commit()
 
             instance = await build_instance(session, grade.semestre)
+            solver_timeout = timeout_s if solver_id == "cpsat" else None
             result = run_solver(
                 instance,
                 solver_id,
-                timeout_s=timeout_s,
+                timeout_s=solver_timeout,
                 hill_iters=settings.HILL_CLIMBING_ITERATIONS,
             )
+            warnings_log = "\n".join(instance.warnings).strip()
         except InstanceConfigurationError as exc:
             logger.warning(
                 "Configuração inválida para a grade %s: %s", grade_id, exc
@@ -91,7 +95,10 @@ async def run_grade_generation(grade_id: int, solver_id: str, timeout_s: int) ->
             grade.status = GradeStatus.FAILED
             grade.score_penalidade = None
             grade.tempo_segundos = result.elapsed_s
-            grade.log = result.log or f"Solver retornou status {result.status.value}"
+            solver_log = result.log or f"Solver retornou status {result.status.value}"
+            grade.log = (
+                f"{warnings_log}\n{solver_log}".strip() if warnings_log else solver_log
+            )
             await session.commit()
             return
 
@@ -128,5 +135,7 @@ async def run_grade_generation(grade_id: int, solver_id: str, timeout_s: int) ->
         grade.score_penalidade = float(result.score)
         grade.tempo_segundos = float(result.elapsed_s)
         grade.solver_usado = solver_id
-        grade.log = result.log
+        grade.log = (
+            f"{warnings_log}\n{result.log}".strip() if warnings_log else result.log
+        )
         await session.commit()

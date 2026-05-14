@@ -11,11 +11,16 @@ def run_solver(
     instance: ProblemInstance,
     solver_id: str,
     *,
-    timeout_s: int,
+    timeout_s: int | None,
     hill_iters: int = 800,
 ) -> SolverResult:
     if solver_id == "cpsat":
-        return solve_cpsat(instance, timeout_s=timeout_s)
+        return solve_cpsat(instance, timeout_s=timeout_s or 30)
     if solver_id == "classic":
-        return solve_classic(instance, timeout_s=timeout_s, hill_iters=hill_iters)
+        return solve_classic(
+            instance,
+            timeout_s=timeout_s,
+            hill_iters=hill_iters,
+            stop_on_first_feasible=True,
+        )
     raise ValueError(f"Solver desconhecido: {solver_id!r}")

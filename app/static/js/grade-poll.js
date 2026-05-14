@@ -2,8 +2,14 @@ const form = document.getElementById("gerar-form");
 const progresso = document.getElementById("progresso");
 const progressoMsg = document.getElementById("progresso-msg");
 const btn = document.getElementById("btn-gerar");
+const timeoutSlider = document.getElementById("grade-timeout-slider");
+const timeoutValue = document.getElementById("timeout-value");
+const timeoutInput = document.getElementById("grade-timeout");
 
 const POLL_INTERVAL_MS = 2000;
+const SLIDER_STEPS = 20;
+const MIN_MINUTES = 1;
+const MAX_MINUTES = 10;
 
 const STATUS_LABEL = {
   pending: "Aguardando início…",
@@ -11,6 +17,32 @@ const STATUS_LABEL = {
   done: "Concluído",
   failed: "Erro",
 };
+
+function sliderMinutes(stepValue) {
+  const step = Number(stepValue);
+  const ratio = (step - 1) / (SLIDER_STEPS - 1);
+  return MIN_MINUTES + ratio * (MAX_MINUTES - MIN_MINUTES);
+}
+
+function syncTimeoutFromSlider() {
+  const slider = document.getElementById("grade-timeout-slider");
+  const valueEl = document.getElementById("timeout-value");
+  const hiddenEl = document.getElementById("grade-timeout");
+  if (!slider) return;
+  const minutes = sliderMinutes(slider.value);
+  if (hiddenEl) hiddenEl.value = String(Math.round(minutes * 60));
+  if (valueEl) valueEl.textContent = `${minutes.toFixed(1).replace(".", ",")} min`;
+  const ratio = (Number(slider.value) - 1) / (SLIDER_STEPS - 1);
+  slider.style.setProperty("--cc-slider-fill", `${ratio * 100}%`);
+}
+window.syncTimeoutFromSlider = syncTimeoutFromSlider;
+
+timeoutSlider?.addEventListener("input", syncTimeoutFromSlider);
+timeoutSlider?.addEventListener("change", syncTimeoutFromSlider);
+["pointerdown", "mousedown", "touchstart", "click"].forEach((evt) => {
+  timeoutSlider?.addEventListener(evt, (e) => e.stopPropagation());
+});
+syncTimeoutFromSlider();
 
 async function pollUntilDone(gradeId) {
   while (true) {
