@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <defs>
+    <filter id="shadow" x="-4%" y="-8%" width="108%" height="116%">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#0f172a" flood-opacity="0.12"/>
+    </filter>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f8fafc"/>
+      <stop offset="100%" stop-color="#e2e8f0"/>
+    </linearGradient>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M0,0 L12,6 L0,12 z" fill="#475569"/>
+    </marker>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#bg)"/>
+  <rect x="0" y="0" width="1920" height="8" fill="#2563eb"/>
+
+  <text x="960" y="95" text-anchor="middle" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="56" font-weight="700" fill="#0f172a">Fluxo de gera&#231;&#227;o</text>
+  <text x="960" y="155" text-anchor="middle" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="36" fill="#64748b">da grade hor&#225;ria</text>
+
+  <g font-family="system-ui,Segoe UI,Arial,sans-serif" filter="url(#shadow)">
+    <rect x="40" y="220" width="200" height="110" rx="14" fill="#dbeafe" stroke="#2563eb" stroke-width="3"/>
+    <text x="140" y="285" text-anchor="middle" font-size="32" font-weight="700" fill="#1e3a8a">UI</text>
+
+    <rect x="270" y="220" width="240" height="110" rx="14" fill="#ffedd5" stroke="#ea580c" stroke-width="3"/>
+    <text x="390" y="275" text-anchor="middle" font-size="30" font-weight="700" fill="#9a3412">POST</text>
+    <text x="390" y="315" text-anchor="middle" font-size="26" fill="#334155">/grade/gerar</text>
+
+    <rect x="540" y="220" width="260" height="110" rx="14" fill="#f3e8ff" stroke="#9333ea" stroke-width="3"/>
+    <text x="670" y="275" text-anchor="middle" font-size="30" font-weight="700" fill="#6b21a8">Validar</text>
+    <text x="670" y="315" text-anchor="middle" font-size="26" fill="#334155">build_instance</text>
+
+    <rect x="830" y="220" width="220" height="110" rx="14" fill="#dcfce7" stroke="#16a34a" stroke-width="3"/>
+    <text x="940" y="285" text-anchor="middle" font-size="32" font-weight="700" fill="#166534">pending</text>
+
+    <rect x="1080" y="220" width="280" height="110" rx="14" fill="#fce7f3" stroke="#db2777" stroke-width="3"/>
+    <text x="1220" y="275" text-anchor="middle" font-size="30" font-weight="700" fill="#9d174d">Background</text>
+    <text x="1220" y="315" text-anchor="middle" font-size="26" fill="#334155">Task</text>
+
+    <rect x="1390" y="220" width="220" height="110" rx="14" fill="#dcfce7" stroke="#16a34a" stroke-width="3"/>
+    <text x="1500" y="285" text-anchor="middle" font-size="32" font-weight="700" fill="#166534">Solver</text>
+
+    <rect x="1640" y="220" width="240" height="110" rx="14" fill="#dbeafe" stroke="#2563eb" stroke-width="3"/>
+    <text x="1760" y="275" text-anchor="middle" font-size="28" font-weight="700" fill="#1e3a8a">Salvar</text>
+    <text x="1760" y="315" text-anchor="middle" font-size="26" fill="#334155">AlocacaoSlot</text>
+  </g>
+
+  <g stroke="#475569" stroke-width="3" fill="none" marker-end="url(#arrow)">
+    <line x1="240" y1="275" x2="270" y2="275"/>
+    <line x1="510" y1="275" x2="540" y2="275"/>
+    <line x1="800" y1="275" x2="830" y2="275"/>
+    <line x1="1050" y1="275" x2="1080" y2="275"/>
+    <line x1="1360" y1="275" x2="1390" y2="275"/>
+    <line x1="1610" y1="275" x2="1640" y2="275"/>
+  </g>
+
+  <rect x="80" y="400" width="1760" height="280" rx="20" fill="#ffffff" stroke="#2563eb" stroke-width="3" filter="url(#shadow)"/>
+  <text x="960" y="480" text-anchor="middle" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="42" font-weight="700" fill="#0f172a">Polling (grade-poll.js)</text>
+  <text x="960" y="550" text-anchor="middle" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="34" fill="#334155">GET /api/v1/grade/status/{id} &#183; a cada 2 segundos</text>
+  <text x="960" y="610" text-anchor="middle" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="34" fill="#334155">pending &#8594; running &#8594; completed | failed</text>
+  <text x="960" y="670" text-anchor="middle" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="32" fill="#64748b">Visualiza&#231;&#227;o em /grade/{id}</text>
+
+  <rect x="80" y="740" width="840" height="280" rx="20" fill="#dcfce7" stroke="#16a34a" stroke-width="4" filter="url(#shadow)"/>
+  <text x="500" y="830" text-anchor="middle" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="44" font-weight="700" fill="#166534">CP-SAT</text>
+  <text x="500" y="895" text-anchor="middle" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="32" fill="#334155">OR-Tools &#183; produ&#231;&#227;o</text>
+  <text x="500" y="955" text-anchor="middle" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="30" fill="#64748b">slots_por_dia irregular</text>
+
+  <rect x="1000" y="740" width="840" height="280" rx="20" fill="#ffedd5" stroke="#ea580c" stroke-width="4" filter="url(#shadow)"/>
+  <text x="1420" y="830" text-anchor="middle" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="44" font-weight="700" fill="#9a3412">Cl&#225;ssico</text>
+  <text x="1420" y="895" text-anchor="middle" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="32" fill="#334155">Backtracking + Hill Climbing</text>
+  <text x="1420" y="955" text-anchor="middle" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="30" fill="#64748b">somente grade 5&#215;6 retangular</text>
+</svg>

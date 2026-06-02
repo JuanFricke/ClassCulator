@@ -265,10 +265,14 @@ async def seed() -> None:
         for ident in em_all:
             turma = Turma(
                 identificador=ident,
+                # EM com janela irregular (Segunda=10, demais=5; total 30): força
+                # o uso do solver CP-SAT, já que o clássico só atende grade
+                # retangular. A carga do currículo EM (30 aulas/sem) continua
+                # fechando exatamente o total (HC7 ok).
                 ensino=infer_turma_ensino(ident, "medio"),
                 semestre="2026/1",
                 qtd_alunos=32,
-                slots_por_dia=[6, 6, 6, 6, 6],
+                slots_por_dia=[10, 5, 5, 5, 5],
             )
             session.add(turma)
             await session.flush()
@@ -307,7 +311,10 @@ async def seed() -> None:
         logger.info("Total de aulas/semana a alocar: %d", total_aulas)
         _verifica_carga_professores()
         logger.info(
-            "\nAtenção: para 12 turmas, recomenda-se solver=cpsat com timeout >= 60 s."
+            "\nAtenção: as turmas de Ensino Médio agora usam janela irregular "
+            "([10,5,5,5,5]); portanto este dataset EFA exige solver='cpsat' "
+            "(o solver clássico rejeita grades não-retangulares). "
+            "Use timeout >= 60 s."
         )
 
 

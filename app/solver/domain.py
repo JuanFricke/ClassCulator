@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 
 DIAS = 5  # 0=segunda ... 4=sexta
 SLOTS_DIA_LEGACY = 6  # tamanho retangular usado pelo dataset EFA e pelo solver clássico
-SLOTS_DIA_MAX = 8  # limite superior para alocação de variáveis CP-SAT e para o grid da UI
+SLOTS_DIA_MAX = 15  # limite superior para alocação de variáveis CP-SAT e para o grid da UI
 SLOTS_DIA = SLOTS_DIA_LEGACY  # alias de compat: usado pelo solver clássico e diagnósticos
 QUARTA = 2  # índice da quarta-feira
 HC4_MIN_AULAS_QUARTA = 3
@@ -82,8 +82,9 @@ class Aula:
     idx: int
     turma_id: int
     disciplina_id: int
-    professor_id: int
-    k: int
+    professor_id: int | None = None
+    k: int = 0
+    candidatos: tuple[int, ...] = ()
 
 
 @dataclass
@@ -122,6 +123,7 @@ class SolverResult:
 
     status: SolverStatus
     assignments: dict[int, tuple[int, int]] = field(default_factory=dict)  # aula_idx -> (dia, slot)
+    professor_por_aula: dict[int, int] = field(default_factory=dict)  # aula_idx -> professor_id
     score: float = 0.0
     elapsed_s: float = 0.0
     log: str = ""

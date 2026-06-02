@@ -198,6 +198,7 @@
                 <td>
                   <div class="select is-fullwidth">
                     <select name="professor_id">
+                      <option value="" {% if not item.professor_id %}selected{% endif %}>Automático (sem preferência)</option>
                       {% for p in professores %}
                         <option value="{{ p.id }}" {% if p.id == item.professor_id %}selected{% endif %}>
                           {{ p.nome }}
@@ -233,6 +234,7 @@
           <td>
             <div class="select is-fullwidth">
               <select name="professor_id">
+                <option value="" selected>Automático (sem preferência)</option>
                 {% for p in professores %}
                   <option value="{{ p.id }}">{{ p.nome }}</option>
                 {% endfor %}

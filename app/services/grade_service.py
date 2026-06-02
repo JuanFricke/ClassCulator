@@ -121,10 +121,10 @@ async def run_grade_generation(
 
             session.add(
                 AlocacaoSlot(
-                    grade_id=grade.id,
-                    turma_id=aula.turma_id,
-                    disciplina_id=aula.disciplina_id,
-                    professor_id=aula.professor_id,
+                grade_id=grade.id,
+                turma_id=aula.turma_id,
+                disciplina_id=aula.disciplina_id,
+                professor_id=result.professor_por_aula.get(aula.idx, aula.professor_id),
                     sala_id=sala_id,
                     dia=dia,
                     slot=slot,

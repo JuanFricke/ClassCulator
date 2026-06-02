@@ -2,11 +2,23 @@
 
 from __future__ import annotations
 
-from collections import Counter
-
 from app.solver.domain import DIAS, SLOTS_DIA_MAX, ProblemInstance
 
 DIAS_LABELS = ["segunda", "terça", "quarta", "quinta", "sexta"]
+
+
+def _candidatos_da_aula(aula) -> tuple[int, ...]:
+    """Pool de professores elegíveis para a aula.
+
+    Usa ``aula.candidatos`` (escolha automática) e, como fallback, o professor
+    fixado em ``aula.professor_id`` (caminho clássico/fixado).
+    """
+
+    if aula.candidatos:
+        return aula.candidatos
+    if aula.professor_id is not None:
+        return (aula.professor_id,)
+    return ()
 
 
 def necessary_condition_report(instance: ProblemInstance) -> str:
@@ -14,8 +26,19 @@ def necessary_condition_report(instance: ProblemInstance) -> str:
 
     lines: list[str] = ["[diagnostico] análise automática de inviabilidade:"]
 
-    aulas_por_prof = Counter(a.professor_id for a in instance.aulas)
-    profs_ativos = {a.professor_id for a in instance.aulas}
+    # Demanda por professor distribuída uniformemente entre os candidatos de cada
+    # aula (uma aula "sem preferência" reparte sua demanda entre os habilitados).
+    carga_por_prof: dict[int, float] = {}
+    profs_ativos: set[int] = set()
+    for a in instance.aulas:
+        candidatos = _candidatos_da_aula(a)
+        if not candidatos:
+            continue
+        fracao = 1.0 / len(candidatos)
+        for pid in candidatos:
+            carga_por_prof[pid] = carga_por_prof.get(pid, 0.0) + fracao
+            profs_ativos.add(pid)
+
     disponibilidade_total: dict[int, int] = {}
     indisponiveis = instance.indisponiveis
 
@@ -25,11 +48,11 @@ def necessary_condition_report(instance: ProblemInstance) -> str:
         disponibilidade_total[pid] = (DIAS * SLOTS_DIA_MAX) - indisponiveis_prof
 
     sobrecarga: list[str] = []
-    for pid, carga in aulas_por_prof.items():
+    for pid, carga in carga_por_prof.items():
         capacidade = disponibilidade_total.get(pid, DIAS * SLOTS_DIA_MAX)
         if carga > capacidade:
             nome = prof_by_id.get(pid).nome if pid in prof_by_id else f"id={pid}"
-            sobrecarga.append(f"{nome}: carga={carga}, slots_disponiveis={capacidade}")
+            sobrecarga.append(f"{nome}: carga≈{carga:.1f}, slots_disponiveis={capacidade}")
     if sobrecarga:
         lines.append(
             "[diagnostico] professores com carga acima da capacidade semanal: "

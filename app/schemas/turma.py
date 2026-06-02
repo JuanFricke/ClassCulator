@@ -55,7 +55,7 @@ class TurmaDisciplinaRead(BaseModel):
     id: int
     turma_id: int
     disciplina_id: int
-    professor_id: int
+    professor_id: int | None
 
 
 class TurmaRead(TurmaBase):
@@ -66,7 +66,7 @@ class TurmaRead(TurmaBase):
 
 class CurriculoItem(BaseModel):
     disciplina_id: int
-    professor_id: int
+    professor_id: int | None = None
 
 
 class TurmaCurriculoBulkUpdate(BaseModel):

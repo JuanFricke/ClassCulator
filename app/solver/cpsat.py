@@ -1,16 +1,22 @@
 """Solver baseado em OR-Tools CP-SAT.
 
 Modelagem:
-- Para cada aula `a` e cada `(dia, slot)` no grid `DIAS × SLOTS_DIA_MAX`,
-  cria-se uma variável booleana `x[a,d,s]`. Variáveis em células fora do
-  `slots_por_dia` da turma (ou indisponíveis ao professor) são forçadas a 0.
-- HC1: `sum_{d,s} x[a,d,s] == 1` (cada aula é alocada exatamente uma vez).
-- HC2 + HC7: para cada (turma, d, s) VÁLIDO da turma,
-  `sum_{a in turma} x[a,d,s] == 1` (sem janelas vazias dentro do expediente).
-- HC3: para cada (professor, d, s), `sum_{a do prof} x[a,d,s] <= 1`.
-- HC4: para cada turma, `sum_{a in turma, d=QUARTA, s} x[a,d,s] >= min(HC4_MIN, slots_quarta)`.
-- HC5: para `(d,s)` indisponíveis ao professor da aula, `x[a,d,s] = 0`.
-- HC6: para cada turma e dia útil, `sum >= min(HC6_MIN, slots_dia)`.
+- Para cada aula `a`, cada professor candidato `p` e cada `(dia, slot)` válido,
+  cria-se uma variável booleana `w[a,p,d,s]` = "aula `a` ministrada pelo
+  professor `p` no dia `d`, slot `s`". As variáveis só existem para `p` em
+  `a.candidatos`, `(d,s)` dentro do `slots_por_dia` da turma e `(d,s)`
+  disponível para `p` (HC5 por construção — slots indisponíveis não geram
+  variável).
+- `x[a,d,s] = sum_p w[a,p,d,s]` é a ocupação da aula no slot, independente do
+  professor (usada nas restrições e soft constraints que não dependem do prof).
+- HC1: `sum_{p,d,s} w[a,p,d,s] == 1` (cada aula alocada exatamente uma vez).
+- Professor único por item de currículo: todas as `k` aulas de uma
+  (turma, disciplina) compartilham um único professor `p` (variável `y[item,p]`).
+- HC2 + HC7: para cada (turma, d, s) VÁLIDO, `sum_{a in turma} x[a,d,s] == 1`.
+- HC3: para cada (professor, d, s), `sum_{a com p candidato} w[a,p,d,s] <= 1`.
+- HC4: para cada turma, `sum x[a,QUARTA,s] >= min(HC4_MIN, slots_quarta)`.
+- HC5: slots indisponíveis ao professor não geram variável `w` (poda).
+- HC6: para cada turma e dia útil, `sum x >= min(HC6_MIN, slots_dia)`.
 
 Soft constraints expressas como variáveis auxiliares na função objetivo.
 """
@@ -58,34 +64,62 @@ def solve_cpsat(
 
     turma_by_id = {t.id: t for t in instance.turmas}
 
-    # Variáveis x[a,d,s] criadas para todo o grid DIAS × SLOTS_DIA_MAX.
-    # Forçamos x = 0 onde:
-    #   - o slot (d, s) está fora do `slots_por_dia` da turma da aula; ou
-    #   - o professor está indisponível em (d, s) (HC5).
+    # w[(a.idx, p, d, s)] — aula `a` com professor `p` em (d, s).
+    # x[(a.idx, d, s)] — ocupação da aula em (d, s) = sum_p w (independe do prof).
+    # Variáveis criadas apenas para (d, s) válido na turma; w apenas para
+    # candidatos disponíveis em (d, s) — HC5 por construção.
+    w: dict[tuple[int, int, int, int], cp_model.IntVar] = {}
     x: dict[tuple[int, int, int], cp_model.IntVar] = {}
     for a in aulas:
-        prof_indisp = instance.indisponiveis.get(a.professor_id, set())
         turma = turma_by_id.get(a.turma_id)
         slots_por_dia = turma.slots_por_dia if turma is not None else ()
         for d in range(DIAS):
             slots_validos_no_dia = slots_por_dia[d] if d < len(slots_por_dia) else 0
-            for s in range(SLOTS_DIA_MAX):
-                var = model.NewBoolVar(f"x_a{a.idx}_d{d}_s{s}")
-                x[(a.idx, d, s)] = var
-                if s >= slots_validos_no_dia:
-                    model.Add(var == 0)  # slot fora do expediente da turma
-                elif (d, s) in prof_indisp:
-                    model.Add(var == 0)  # HC5
+            for s in range(slots_validos_no_dia):
+                w_vars: list[cp_model.IntVar] = []
+                for p in a.candidatos:
+                    if (d, s) in instance.indisponiveis.get(p, set()):
+                        continue  # HC5 — slot indisponível ao professor (poda)
+                    var = model.NewBoolVar(f"w_a{a.idx}_p{p}_d{d}_s{s}")
+                    w[(a.idx, p, d, s)] = var
+                    w_vars.append(var)
+                occ = model.NewBoolVar(f"x_a{a.idx}_d{d}_s{s}")
+                x[(a.idx, d, s)] = occ
+                if w_vars:
+                    model.Add(occ == sum(w_vars))
+                else:
+                    model.Add(occ == 0)  # nenhum candidato disponível neste slot
 
     # HC1 — exatamente uma alocação por aula.
     for a in aulas:
-        model.Add(
-            sum(x[(a.idx, d, s)] for d in range(DIAS) for s in range(SLOTS_DIA_MAX)) == 1
-        )
+        occ_terms = [x[k] for k in x if k[0] == a.idx]
+        model.Add(sum(occ_terms) == 1)
+
+    # Professor único por item de currículo (turma, disciplina): cria y[item, p]
+    # com sum_p y == 1 e amarra todas as aulas do item ao professor escolhido.
+    itens: dict[tuple[int, int], list] = {}
+    for a in aulas:
+        itens.setdefault((a.turma_id, a.disciplina_id), []).append(a)
+    for item_id, (tid, did) in enumerate(itens):
+        aulas_item = itens[(tid, did)]
+        candidatos = aulas_item[0].candidatos
+        if not candidatos:
+            continue
+        y_item: dict[int, cp_model.IntVar] = {}
+        for p in candidatos:
+            y_item[p] = model.NewBoolVar(f"y_item{item_id}_p{p}")
+        model.Add(sum(y_item.values()) == 1)
+        for a in aulas_item:
+            for p in candidatos:
+                w_ap = [
+                    w[(a.idx, p, d, s)]
+                    for d in range(DIAS)
+                    for s in range(SLOTS_DIA_MAX)
+                    if (a.idx, p, d, s) in w
+                ]
+                model.Add(sum(w_ap) == y_item[p])
 
     # HC2 + HC7 — cada (turma, dia, slot) VÁLIDO ocupado por exatamente uma aula.
-    # Para slots fora do expediente, todas as variáveis x já estão forçadas a 0,
-    # de modo que nenhuma aula pode cair lá.
     for t in instance.turmas:
         idxs = [a.idx for a in aulas if a.turma_id == t.id]
         if not idxs:
@@ -95,16 +129,20 @@ def solve_cpsat(
             for s in range(slots_validos):
                 model.Add(sum(x[(i, d, s)] for i in idxs) == 1)
 
-    # HC3 — exclusividade de professor por slot (em todo o grid).
-    profs = {a.professor_id for a in aulas}
+    # HC3 — exclusividade de professor por slot.
+    profs = {p for a in aulas for p in a.candidatos}
     for pid in profs:
-        idxs = [a.idx for a in aulas if a.professor_id == pid]
         for d in range(DIAS):
             for s in range(SLOTS_DIA_MAX):
-                model.Add(sum(x[(i, d, s)] for i in idxs) <= 1)
+                w_pds = [
+                    w[(a.idx, pid, d, s)]
+                    for a in aulas
+                    if (a.idx, pid, d, s) in w
+                ]
+                if len(w_pds) > 1:
+                    model.Add(sum(w_pds) <= 1)
 
     # HC4 — cada turma tem pelo menos min(HC4_MIN, slots_quarta) aulas na quarta.
-    # Quando slots_quarta == 0, a restrição é trivialmente satisfeita.
     for t in instance.turmas:
         idxs = [a.idx for a in aulas if a.turma_id == t.id]
         if not idxs:
@@ -117,8 +155,7 @@ def solve_cpsat(
             sum(x[(i, QUARTA, s)] for i in idxs for s in range(slots_quarta)) >= minimo
         )
 
-    # HC6 — cada turma com pelo menos min(HC6_MIN, slots_dia) aulas em cada dia
-    # útil. Dias com slots_por_dia[d] == 0 ficam livres por design.
+    # HC6 — cada turma com pelo menos min(HC6_MIN, slots_dia) aulas em cada dia útil.
     for t in instance.turmas:
         idxs = [a.idx for a in aulas if a.turma_id == t.id]
         if not idxs:
@@ -132,7 +169,7 @@ def solve_cpsat(
                 sum(x[(i, d, s)] for i in idxs for s in range(slots_dia)) >= minimo
             )
 
-    objective_terms = _build_objective(model, instance, x)
+    objective_terms = _build_objective(model, instance, w, x)
     model.Minimize(sum(objective_terms))
 
     solver = cp_model.CpSolver()
@@ -151,17 +188,21 @@ def solve_cpsat(
 
     if status_code in (cp_model.OPTIMAL, cp_model.FEASIBLE):
         assignments: dict[int, tuple[int, int]] = {}
+        professor_por_aula: dict[int, int] = {}
         for a in aulas:
-            for d in range(DIAS):
-                for s in range(SLOTS_DIA_MAX):
-                    if solver.Value(x[(a.idx, d, s)]) == 1:
-                        assignments[a.idx] = (d, s)
-                        break
-        score, breakdown = calcular_score(instance, assignments)
+            for (aidx, p, d, s), var in w.items():
+                if aidx != a.idx:
+                    continue
+                if solver.Value(var) == 1:
+                    assignments[a.idx] = (d, s)
+                    professor_por_aula[a.idx] = p
+                    break
+        score, breakdown = calcular_score(instance, assignments, professor_por_aula)
         log_lines.append(f"[cpsat] score={score:.0f} {breakdown}.")
         return SolverResult(
             status=SolverStatus.OK,
             assignments=assignments,
+            professor_por_aula=professor_por_aula,
             score=score,
             elapsed_s=elapsed,
             log="\n".join(log_lines),
@@ -183,11 +224,17 @@ def solve_cpsat(
 def _build_objective(
     model: cp_model.CpModel,
     instance: ProblemInstance,
+    w: dict[tuple[int, int, int, int], cp_model.IntVar],
     x: dict[tuple[int, int, int], cp_model.IntVar],
 ) -> list[cp_model.LinearExprT]:
     """Constrói os termos da função objetivo (soft constraints com pesos do relatório)."""
 
     terms: list[cp_model.LinearExprT] = []
+
+    def prof_busy(pid: int, idxs: list[int], d: int, s: int) -> cp_model.LinearExprT:
+        return sum(
+            w[(i, pid, d, s)] for i in idxs if (i, pid, d, s) in w
+        )
 
     # ---- SC2 — pares consecutivos da mesma área para a mesma turma -------- #
     disc_by_id = {d.id: d for d in instance.disciplinas}
@@ -218,29 +265,29 @@ def _build_objective(
 
     # ---- SC1 — janelas vazias do professor no dia ------------------------- #
     # SC1 = (último - primeiro + 1) - quantidade_de_aulas_do_dia, quando aulas_do_dia >= 2.
-    profs = {a.professor_id for a in instance.aulas}
+    profs = {p for a in instance.aulas for p in a.candidatos}
     for pid in profs:
-        idxs = [a.idx for a in instance.aulas if a.professor_id == pid]
+        idxs = [a.idx for a in instance.aulas if pid in a.candidatos]
         for d in range(DIAS):
-            qtd = sum(x[(i, d, s)] for i in idxs for s in range(SLOTS_DIA_MAX))
+            qtd = sum(prof_busy(pid, idxs, d, s) for s in range(SLOTS_DIA_MAX))
 
             primeiro_marks = []
             ultimo_marks = []
             for s in range(SLOTS_DIA_MAX):
-                tem_aula_s = sum(x[(i, d, s)] for i in idxs)
+                tem_aula_s = prof_busy(pid, idxs, d, s)
 
                 e_primeiro = model.NewBoolVar(f"sc1_first_p{pid}_d{d}_s{s}")
                 # e_primeiro = 1 → tem_aula_s >= 1 e nenhum slot anterior tem aula.
                 model.Add(tem_aula_s >= 1).OnlyEnforceIf(e_primeiro)
                 if s > 0:
-                    anteriores = sum(x[(i, d, sa)] for i in idxs for sa in range(s))
+                    anteriores = sum(prof_busy(pid, idxs, d, sa) for sa in range(s))
                     model.Add(anteriores == 0).OnlyEnforceIf(e_primeiro)
 
                 e_ultimo = model.NewBoolVar(f"sc1_last_p{pid}_d{d}_s{s}")
                 model.Add(tem_aula_s >= 1).OnlyEnforceIf(e_ultimo)
                 if s < SLOTS_DIA_MAX - 1:
                     posteriores = sum(
-                        x[(i, d, sb)] for i in idxs for sb in range(s + 1, SLOTS_DIA_MAX)
+                        prof_busy(pid, idxs, d, sb) for sb in range(s + 1, SLOTS_DIA_MAX)
                     )
                     model.Add(posteriores == 0).OnlyEnforceIf(e_ultimo)
 
@@ -284,30 +331,36 @@ def _build_objective(
     # no dia, o ideal é todas em um único bloco contíguo. Cada bloco a mais
     # equivale a um "split" e penaliza com peso PESO_SC4. Formulação por
     # detecção de borda (start_s = aula em s e nenhuma em s-1).
-    prof_turma: dict[tuple[int, int], list] = {}
+    prof_turma: dict[tuple[int, int], list[int]] = {}
     for a in instance.aulas:
-        prof_turma.setdefault((a.professor_id, a.turma_id), []).append(a)
+        for p in a.candidatos:
+            prof_turma.setdefault((p, a.turma_id), []).append(a.idx)
 
-    for (pid, tid), aulas_pt in prof_turma.items():
-        if len(aulas_pt) < 2:
+    for (pid, tid), idxs in prof_turma.items():
+        if len(idxs) < 2:
             continue  # com no máximo 1 aula não há possibilidade de split
+
+        def pt_busy(d: int, s: int, _pid: int = pid, _idxs: list[int] = idxs) -> cp_model.LinearExprT:
+            return sum(
+                w[(i, _pid, d, s)] for i in _idxs if (i, _pid, d, s) in w
+            )
 
         for d in range(DIAS):
             blocos = []
             for s in range(SLOTS_DIA_MAX):
-                tem_aula_s = sum(x[(a.idx, d, s)] for a in aulas_pt)
+                tem_aula_s = pt_busy(d, s)
                 bloco_s = model.NewBoolVar(f"sc4_block_p{pid}_t{tid}_d{d}_s{s}")
                 if s == 0:
                     model.Add(bloco_s == tem_aula_s)
                 else:
-                    tem_aula_prev = sum(x[(a.idx, d, s - 1)] for a in aulas_pt)
+                    tem_aula_prev = pt_busy(d, s - 1)
                     # bloco_s = 1 ⇔ tem_aula_s = 1 ∧ tem_aula_prev = 0
                     model.Add(bloco_s >= tem_aula_s - tem_aula_prev)
                     model.Add(bloco_s <= tem_aula_s)
                     model.Add(bloco_s <= 1 - tem_aula_prev)
                 blocos.append(bloco_s)
 
-            qtd = sum(x[(a.idx, d, s)] for a in aulas_pt for s in range(SLOTS_DIA_MAX))
+            qtd = sum(pt_busy(d, s) for s in range(SLOTS_DIA_MAX))
             tem_aula_no_dia = model.NewBoolVar(f"sc4_any_p{pid}_t{tid}_d{d}")
             model.Add(qtd >= 1).OnlyEnforceIf(tem_aula_no_dia)
             model.Add(qtd == 0).OnlyEnforceIf(tem_aula_no_dia.Not())

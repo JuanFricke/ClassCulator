@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <defs>
+    <filter id="shadow" x="-4%" y="-8%" width="108%" height="116%">
+      <feDropShadow dx="0" dy="6" stdDeviation="12" flood-color="#0f172a" flood-opacity="0.2"/>
+    </filter>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f8fafc"/>
+      <stop offset="100%" stop-color="#e2e8f0"/>
+    </linearGradient>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#bg)"/>
+  <rect x="0" y="0" width="1920" height="8" fill="#2563eb"/>
+
+  <text x="960" y="95" text-anchor="middle" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="56" font-weight="700" fill="#0f172a">Estrutura</text>
+  <text x="960" y="155" text-anchor="middle" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="36" fill="#64748b">diret&#243;rio app/</text>
+
+  <rect x="120" y="200" width="1680" height="820" rx="24" fill="#0f172a" stroke="#2563eb" stroke-width="4" filter="url(#shadow)"/>
+
+  <g font-family="ui-monospace,Consolas,Monaco,monospace">
+    <text x="180" y="290" font-size="42" font-weight="700" fill="#60a5fa">app/</text>
+
+    <text x="220" y="370" font-size="34" fill="#4ade80">main.py</text>
+    <text x="480" y="370" font-size="30" fill="#94a3b8">FastAPI &#183; routers &#183; /static</text>
+
+    <text x="220" y="450" font-size="34" fill="#fbbf24">core/</text>
+    <text x="480" y="450" font-size="30" fill="#94a3b8">config &#183; database async &#183; deps</text>
+
+    <text x="220" y="530" font-size="34" fill="#fbbf24">models/</text>
+    <text x="480" y="530" font-size="30" fill="#94a3b8">Turma &#183; Professor &#183; Grade &#183; Sala</text>
+
+    <text x="220" y="610" font-size="34" fill="#fbbf24">schemas/</text>
+    <text x="480" y="610" font-size="30" fill="#94a3b8">Pydantic DTOs</text>
+
+    <text x="220" y="690" font-size="34" fill="#fbbf24">api/</text>
+    <text x="480" y="690" font-size="30" fill="#94a3b8">REST /api/v1 (JSON)</text>
+
+    <text x="220" y="770" font-size="34" fill="#fbbf24">web/</text>
+    <text x="480" y="770" font-size="30" fill="#94a3b8">routes.py &#8212; SSR HTML</text>
+
+    <text x="220" y="850" font-size="34" fill="#fb923c">solver/</text>
+    <text x="480" y="850" font-size="30" fill="#94a3b8">cpsat &#183; classic &#183; builder &#183; constraints</text>
+
+    <text x="900" y="370" font-size="34" fill="#fbbf24">services/</text>
+    <text x="1160" y="370" font-size="30" fill="#94a3b8">grade_service.py</text>
+
+    <text x="900" y="450" font-size="34" fill="#fbbf24">templates/</text>
+    <text x="1160" y="450" font-size="30" fill="#94a3b8">Jinja2</text>
+
+    <text x="900" y="530" font-size="34" fill="#fbbf24">static/</text>
+    <text x="1160" y="530" font-size="30" fill="#94a3b8">css &#183; js</text>
+
+    <text x="900" y="610" font-size="34" fill="#4ade80">seed.py</text>
+    <text x="1160" y="610" font-size="30" fill="#94a3b8">seed_alt.py</text>
+
+    <text x="900" y="690" font-size="34" fill="#38bdf8">alembic/</text>
+    <text x="1160" y="690" font-size="30" fill="#94a3b8">migra&#231;&#245;es</text>
+  </g>
+</svg>

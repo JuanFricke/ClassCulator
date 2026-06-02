@@ -40,7 +40,7 @@ async def main() -> None:
             hill_iters=settings.HILL_CLIMBING_ITERATIONS,
         )
         logger.info("status=%s score=%.0f tempo=%.2fs", result.status.value, result.score, result.elapsed_s)
-        violacoes = violacoes_hard(instance, result.assignments)
+        violacoes = violacoes_hard(instance, result.assignments, result.professor_por_aula)
         if violacoes:
             logger.warning("VIOLAÇÕES de hard constraints (%d):", len(violacoes))
             for v in violacoes[:10]:

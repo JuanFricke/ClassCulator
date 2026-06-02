@@ -365,6 +365,27 @@ EM_ATRIBUICAO: dict[str, list[str]] = {
 }
 
 
+# Professor fixo (manual) × automático (None = "sem preferência").
+# Para exercitar a escolha automática do professor pelo CP-SAT, a MAIORIA dos
+# itens de currículo é cadastrada com ``professor_id=None`` (o solver escolhe o
+# melhor professor habilitado, ciente de conflitos de horário). Mantemos um
+# subconjunto de disciplinas "especialistas" com professor FIXADO, como exemplo
+# de atribuição manual quando necessário. As atribuições nominais abaixo (e em
+# ``_validar_dataset``) continuam servindo de fonte para fixar esses itens e
+# para o sanity check de carga; o None é aplicado apenas na criação do
+# ``TurmaDisciplina``.
+DISCIPLINAS_PROFESSOR_FIXO: frozenset[str] = frozenset(
+    {
+        "Física",          # laboratório dedicado / professor(a) único(a) habilitado(a)
+        "Química",
+        "Biologia",
+        "Computação EF I",
+        "Música EI",
+        "Música EF I",
+    }
+)
+
+
 SEMESTRE = "2026/1"
 
 
@@ -591,11 +612,17 @@ async def seed() -> None:
                 for disc_nome, lista_profs in atrib.items():
                     prof = professores[lista_profs[idx]]
                     disc = disciplinas[disc_nome]
+                    # None = automático (sem preferência): o CP-SAT escolhe o
+                    # professor habilitado ideal. Só os especialistas listados
+                    # em DISCIPLINAS_PROFESSOR_FIXO permanecem fixados (manual).
+                    professor_id = (
+                        prof.id if disc_nome in DISCIPLINAS_PROFESSOR_FIXO else None
+                    )
                     session.add(
                         TurmaDisciplina(
                             turma_id=turma.id,
                             disciplina_id=disc.id,
-                            professor_id=prof.id,
+                            professor_id=professor_id,
                         )
                     )
             logger.info("  %s: %d turma(s) criadas.", rotulo, len(turmas))

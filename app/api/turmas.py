@@ -101,6 +101,8 @@ async def set_curriculo(
         ).all()
     )
     for item in payload.items:
+        if item.professor_id is None:
+            continue
         if (item.professor_id, item.disciplina_id) not in allowed_pairs:
             raise HTTPException(
                 status_code=422,
