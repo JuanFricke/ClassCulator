@@ -100,7 +100,7 @@
         </h2>
         {% if ultima %}
           <p class="mb-2">
-            <strong>Semestre {{ ultima.semestre }}</strong>
+            <strong>Ano {{ ano_atual.ano if ano_atual else '' }}</strong>
             · versão {{ ultima.versao }}
             · {{ status_tag(ultima.status) }}
           </p>

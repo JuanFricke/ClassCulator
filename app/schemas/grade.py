@@ -7,7 +7,6 @@ SolverId = Literal["cpsat", "classic"]
 
 
 class GradeGenerateRequest(BaseModel):
-    semestre: str = Field(default="2026/1", max_length=20)
     solver: SolverId = "cpsat"
     timeout_s: int = Field(default=30, ge=1, le=600)
 
@@ -16,14 +15,12 @@ class GradeGenerateResponse(BaseModel):
     id: int
     status: str
     versao: int
-    semestre: str
 
 
 class GradeStatusResponse(BaseModel):
     id: int
     status: str
     versao: int
-    semestre: str
     solver_usado: str | None
     score_penalidade: float | None
     tempo_segundos: float | None
@@ -41,10 +38,27 @@ class AlocacaoRead(BaseModel):
     slot: int
 
 
+class AlocacaoManualItem(BaseModel):
+    turma_id: int
+    disciplina_id: int
+    professor_id: int
+    sala_id: int | None = None
+    dia: int = Field(ge=0)
+    slot: int = Field(ge=0)
+
+
+class GradeManualSaveRequest(BaseModel):
+    alocacoes: list[AlocacaoManualItem] = Field(default_factory=list)
+
+
+class GradeManualSaveResponse(BaseModel):
+    id: int
+    versao: int
+
+
 class GradeListItem(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
-    semestre: str
     versao: int
     status: str
     score_penalidade: float | None

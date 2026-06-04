@@ -1,10 +1,13 @@
 from app.schemas.disciplina import DisciplinaCreate, DisciplinaRead, DisciplinaUpdate
 from app.schemas.grade import (
+    AlocacaoManualItem,
     AlocacaoRead,
     GradeDetail,
     GradeGenerateRequest,
     GradeGenerateResponse,
     GradeListItem,
+    GradeManualSaveRequest,
+    GradeManualSaveResponse,
     GradeStatusResponse,
 )
 from app.schemas.professor import (
@@ -46,4 +49,7 @@ __all__ = [
     "GradeListItem",
     "GradeDetail",
     "AlocacaoRead",
+    "AlocacaoManualItem",
+    "GradeManualSaveRequest",
+    "GradeManualSaveResponse",
 ]

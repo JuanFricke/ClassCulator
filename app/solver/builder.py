@@ -29,20 +29,34 @@ from app.solver.domain import (
 )
 
 
-async def build_instance(session: AsyncSession, semestre: str) -> ProblemInstance:
+async def build_instance(session: AsyncSession, ano_letivo_id: int) -> ProblemInstance:
     turmas_rows = (
-        await session.execute(select(Turma).where(Turma.semestre == semestre).order_by(Turma.id))
+        await session.execute(
+            select(Turma).where(Turma.ano_letivo_id == ano_letivo_id).order_by(Turma.id)
+        )
     ).scalars().all()
     if not turmas_rows:
-        raise ValueError(f"Nenhuma turma encontrada para o semestre {semestre!r}.")
+        raise ValueError("Nenhuma turma encontrada para o ano letivo selecionado.")
 
     disciplinas_rows = (
-        await session.execute(select(Disciplina).order_by(Disciplina.id))
+        await session.execute(
+            select(Disciplina)
+            .where(Disciplina.ano_letivo_id == ano_letivo_id)
+            .order_by(Disciplina.id)
+        )
     ).scalars().all()
     professores_rows = (
-        await session.execute(select(Professor).order_by(Professor.id))
+        await session.execute(
+            select(Professor)
+            .where(Professor.ano_letivo_id == ano_letivo_id)
+            .order_by(Professor.id)
+        )
     ).scalars().all()
-    salas_rows = (await session.execute(select(Sala).order_by(Sala.id))).scalars().all()
+    salas_rows = (
+        await session.execute(
+            select(Sala).where(Sala.ano_letivo_id == ano_letivo_id).order_by(Sala.id)
+        )
+    ).scalars().all()
 
     turmas = [
         TurmaInfo(
@@ -66,9 +80,14 @@ async def build_instance(session: AsyncSession, semestre: str) -> ProblemInstanc
     professores = [ProfessorInfo(id=p.id, nome=p.nome) for p in professores_rows]
     salas = [SalaInfo(id=s.id, nome=s.nome, eh_lab=s.tipo == SalaTipo.LAB) for s in salas_rows]
 
+    professor_ids = [p.id for p in professores_rows] or [-1]
+
     indisp_rows = (
         await session.execute(
-            select(DisponibilidadeProfessor).where(DisponibilidadeProfessor.disponivel.is_(False))
+            select(DisponibilidadeProfessor).where(
+                DisponibilidadeProfessor.disponivel.is_(False),
+                DisponibilidadeProfessor.professor_id.in_(professor_ids),
+            )
         )
     ).scalars().all()
     indisponiveis: dict[int, set[tuple[int, int]]] = {}
@@ -76,7 +95,11 @@ async def build_instance(session: AsyncSession, semestre: str) -> ProblemInstanc
         indisponiveis.setdefault(d.professor_id, set()).add((d.dia, d.slot))
 
     prof_disc_rows = (
-        await session.execute(select(ProfessorDisciplina))
+        await session.execute(
+            select(ProfessorDisciplina).where(
+                ProfessorDisciplina.professor_id.in_(professor_ids)
+            )
+        )
     ).scalars().all()
     professores_por_disciplina: dict[int, list[int]] = {}
     for row in prof_disc_rows:
@@ -89,7 +112,7 @@ async def build_instance(session: AsyncSession, semestre: str) -> ProblemInstanc
         )
     ).scalars().all()
     if not curriculo_rows:
-        raise ValueError("Nenhum currículo cadastrado para as turmas do semestre.")
+        raise ValueError("Nenhum currículo cadastrado para as turmas do ano letivo.")
 
     disc_by_id = {d.id: d for d in disciplinas}
     prof_by_id = {p.id: p for p in professores}

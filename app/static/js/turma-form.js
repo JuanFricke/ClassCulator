@@ -45,7 +45,6 @@ form?.addEventListener("submit", async (event) => {
   const payload = {
     identificador: data.get("identificador"),
     ensino: inferEnsinoFromTurma(data.get("identificador")),
-    semestre: data.get("semestre"),
     qtd_alunos: parseInt(data.get("qtd_alunos"), 10),
   };
   if (slotsPorDia) {

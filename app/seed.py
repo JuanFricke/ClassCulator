@@ -20,12 +20,17 @@ from __future__ import annotations
 import asyncio
 import logging
 
-from sqlalchemy import delete
+from sqlalchemy import delete, select
 
+from app.core.config import settings
 from app.core.database import AsyncSessionLocal
 from app.core.ensino import infer_disciplina_ensino, infer_turma_ensino
+from app.core.security import hash_senha
 from app.models import (
+    PAPEL_EMPRESA,
     AlocacaoSlot,
+    AnoLetivo,
+    ConviteProfessor,
     Disciplina,
     DisponibilidadeProfessor,
     GradeHoraria,
@@ -34,8 +39,11 @@ from app.models import (
     Sala,
     Turma,
     TurmaDisciplina,
+    Usuario,
 )
 from app.models.sala import SalaTipo
+
+ANO_SEED = 2026
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -171,7 +179,28 @@ async def reset_db(session) -> None:
     await session.execute(delete(Disciplina))
     await session.execute(delete(Professor))
     await session.execute(delete(Sala))
+    await session.execute(delete(ConviteProfessor))
+    await session.execute(delete(AnoLetivo))
     await session.commit()
+
+
+async def _garantir_usuario_empresa(session) -> None:
+    email = settings.EMPRESA_EMAIL.strip().lower()
+    existente = (
+        await session.execute(select(Usuario).where(Usuario.email == email))
+    ).scalar_one_or_none()
+    if existente is None:
+        session.add(
+            Usuario(
+                nome=settings.EMPRESA_NOME,
+                email=email,
+                senha_hash=hash_senha(settings.EMPRESA_SENHA),
+                papel=PAPEL_EMPRESA,
+                ativo=True,
+            )
+        )
+        await session.commit()
+        logger.info("Usuário empresa criado: %s", email)
 
 
 def _verifica_carga_professores() -> None:
@@ -197,10 +226,19 @@ async def seed() -> None:
         logger.info("Limpando tabelas…")
         await reset_db(session)
 
+        await _garantir_usuario_empresa(session)
+
+        logger.info("Criando ano letivo %d…", ANO_SEED)
+        ano = AnoLetivo(ano=ANO_SEED)
+        session.add(ano)
+        await session.flush()
+        ano_id = ano.id
+
         logger.info("Criando %d disciplinas…", len(DISCIPLINAS))
         disciplinas: dict[str, Disciplina] = {}
         for nome, area, carga, lab, teor in DISCIPLINAS:
             obj = Disciplina(
+                ano_letivo_id=ano_id,
                 nome=nome,
                 ensino=infer_disciplina_ensino(nome, "ambos"),
                 area=area,
@@ -215,12 +253,12 @@ async def seed() -> None:
         logger.info("Criando %d salas (incluindo %d laboratórios)…",
                     len(SALAS), sum(1 for _, t, _ in SALAS if t == SalaTipo.LAB))
         for nome, tipo, cap in SALAS:
-            session.add(Sala(nome=nome, tipo=tipo, capacidade=cap))
+            session.add(Sala(ano_letivo_id=ano_id, nome=nome, tipo=tipo, capacidade=cap))
 
         logger.info("Criando %d professores…", len(PROFESSORES))
         professores: dict[str, Professor] = {}
         for nome, email, leciona, indisp in PROFESSORES:
-            prof = Professor(nome=nome, email=email)
+            prof = Professor(ano_letivo_id=ano_id, nome=nome, email=email)
             session.add(prof)
             await session.flush()
             for disc_nome in leciona:
@@ -239,12 +277,11 @@ async def seed() -> None:
             professores[nome] = prof
 
         logger.info("Criando turmas + currículo…")
-        # EF — todas no semestre "2026/1"
         for ident in EF_TURMAS:
             turma = Turma(
+                ano_letivo_id=ano_id,
                 identificador=ident,
                 ensino=infer_turma_ensino(ident, "fundamental"),
-                semestre="2026/1",
                 qtd_alunos=30,
                 slots_por_dia=[6, 6, 6, 6, 6],
             )
@@ -260,17 +297,17 @@ async def seed() -> None:
                     )
                 )
 
-        # EM — manhã e tarde, todas no semestre "2026/1"
+        # EM — manhã e tarde
         em_all = EM_TURMAS_MANHA + EM_TURMAS_TARDE
         for ident in em_all:
             turma = Turma(
+                ano_letivo_id=ano_id,
                 identificador=ident,
                 # EM com janela irregular (Segunda=10, demais=5; total 30): força
                 # o uso do solver CP-SAT, já que o clássico só atende grade
                 # retangular. A carga do currículo EM (30 aulas/sem) continua
                 # fechando exatamente o total (HC7 ok).
                 ensino=infer_turma_ensino(ident, "medio"),
-                semestre="2026/1",
                 qtd_alunos=32,
                 slots_por_dia=[10, 5, 5, 5, 5],
             )

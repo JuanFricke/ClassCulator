@@ -1,9 +1,10 @@
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import delete, select
 
+from app.core.auth import AnoAtivoApiDep
 from app.core.deps import SessionDep
 from app.core.ensino import ensino_compativel, infer_turma_ensino
-from app.models import Disciplina, ProfessorDisciplina, Turma, TurmaDisciplina
+from app.models import Disciplina, Professor, ProfessorDisciplina, Turma, TurmaDisciplina
 from app.schemas import (
     TurmaCreate,
     TurmaCurriculoBulkUpdate,
@@ -13,6 +14,13 @@ from app.schemas import (
 )
 
 router = APIRouter(prefix="/turmas", tags=["turmas"])
+
+
+async def _get_no_ano(session: SessionDep, turma_id: int, ano_id: int) -> Turma:
+    obj = await session.get(Turma, turma_id)
+    if obj is None or obj.ano_letivo_id != ano_id:
+        raise HTTPException(status_code=404, detail="Turma não encontrada")
+    return obj
 
 
 async def _serialize(session, turma: Turma) -> TurmaRead:
@@ -25,7 +33,6 @@ async def _serialize(session, turma: Turma) -> TurmaRead:
             "id": turma.id,
             "identificador": turma.identificador,
             "ensino": turma.ensino,
-            "semestre": turma.semestre,
             "qtd_alunos": turma.qtd_alunos,
             "slots_por_dia": list(turma.slots_por_dia),
             "curriculo": [c.model_dump() for c in curriculo],
@@ -34,17 +41,21 @@ async def _serialize(session, turma: Turma) -> TurmaRead:
 
 
 @router.get("", response_model=list[TurmaRead])
-async def list_turmas(session: SessionDep) -> list[TurmaRead]:
-    result = await session.execute(select(Turma).order_by(Turma.identificador))
+async def list_turmas(session: SessionDep, ano: AnoAtivoApiDep) -> list[TurmaRead]:
+    result = await session.execute(
+        select(Turma).where(Turma.ano_letivo_id == ano.id).order_by(Turma.identificador)
+    )
     turmas = list(result.scalars().all())
     return [await _serialize(session, t) for t in turmas]
 
 
 @router.post("", response_model=TurmaRead, status_code=status.HTTP_201_CREATED)
-async def create_turma(payload: TurmaCreate, session: SessionDep) -> TurmaRead:
+async def create_turma(
+    payload: TurmaCreate, session: SessionDep, ano: AnoAtivoApiDep
+) -> TurmaRead:
     data = payload.model_dump()
     data["ensino"] = infer_turma_ensino(data["identificador"], data.get("ensino") or "fundamental")
-    obj = Turma(**data)
+    obj = Turma(ano_letivo_id=ano.id, **data)
     session.add(obj)
     await session.commit()
     await session.refresh(obj)
@@ -52,18 +63,16 @@ async def create_turma(payload: TurmaCreate, session: SessionDep) -> TurmaRead:
 
 
 @router.get("/{turma_id}", response_model=TurmaRead)
-async def get_turma(turma_id: int, session: SessionDep) -> TurmaRead:
-    obj = await session.get(Turma, turma_id)
-    if obj is None:
-        raise HTTPException(status_code=404, detail="Turma não encontrada")
+async def get_turma(turma_id: int, session: SessionDep, ano: AnoAtivoApiDep) -> TurmaRead:
+    obj = await _get_no_ano(session, turma_id, ano.id)
     return await _serialize(session, obj)
 
 
 @router.patch("/{turma_id}", response_model=TurmaRead)
-async def update_turma(turma_id: int, payload: TurmaUpdate, session: SessionDep) -> TurmaRead:
-    obj = await session.get(Turma, turma_id)
-    if obj is None:
-        raise HTTPException(status_code=404, detail="Turma não encontrada")
+async def update_turma(
+    turma_id: int, payload: TurmaUpdate, session: SessionDep, ano: AnoAtivoApiDep
+) -> TurmaRead:
+    obj = await _get_no_ano(session, turma_id, ano.id)
     data = payload.model_dump(exclude_unset=True)
     if "identificador" in data:
         data["ensino"] = infer_turma_ensino(data["identificador"], data.get("ensino") or obj.ensino)
@@ -75,21 +84,20 @@ async def update_turma(turma_id: int, payload: TurmaUpdate, session: SessionDep)
 
 
 @router.delete("/{turma_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_turma(turma_id: int, session: SessionDep) -> None:
-    obj = await session.get(Turma, turma_id)
-    if obj is None:
-        raise HTTPException(status_code=404, detail="Turma não encontrada")
+async def delete_turma(turma_id: int, session: SessionDep, ano: AnoAtivoApiDep) -> None:
+    obj = await _get_no_ano(session, turma_id, ano.id)
     await session.delete(obj)
     await session.commit()
 
 
 @router.put("/{turma_id}/curriculo", response_model=TurmaRead)
 async def set_curriculo(
-    turma_id: int, payload: TurmaCurriculoBulkUpdate, session: SessionDep
+    turma_id: int,
+    payload: TurmaCurriculoBulkUpdate,
+    session: SessionDep,
+    ano: AnoAtivoApiDep,
 ) -> TurmaRead:
-    obj = await session.get(Turma, turma_id)
-    if obj is None:
-        raise HTTPException(status_code=404, detail="Turma não encontrada")
+    obj = await _get_no_ano(session, turma_id, ano.id)
     allowed_pairs = set(
         (
             await session.execute(
@@ -97,6 +105,8 @@ async def set_curriculo(
                     ProfessorDisciplina.professor_id,
                     ProfessorDisciplina.disciplina_id,
                 )
+                .join(Professor, Professor.id == ProfessorDisciplina.professor_id)
+                .where(Professor.ano_letivo_id == ano.id)
             )
         ).all()
     )
@@ -118,7 +128,10 @@ async def set_curriculo(
             d.id: d
             for d in (
                 await session.execute(
-                    select(Disciplina).where(Disciplina.id.in_(disciplina_ids))
+                    select(Disciplina).where(
+                        Disciplina.id.in_(disciplina_ids),
+                        Disciplina.ano_letivo_id == ano.id,
+                    )
                 )
             ).scalars().all()
         }

@@ -19,7 +19,9 @@ class GradeHoraria(Base):
     __tablename__ = "grades_horarias"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    semestre: Mapped[str] = mapped_column(String(20), nullable=False, default="2026/1")
+    ano_letivo_id: Mapped[int] = mapped_column(
+        ForeignKey("anos_letivos.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     versao: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     status: Mapped[GradeStatus] = mapped_column(
         PgEnum(

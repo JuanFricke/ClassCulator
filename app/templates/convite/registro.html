@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+
+{% block title %}Cadastro de professor · ClassCulator{% endblock %}
+
+{% block content %}
+<div class="columns is-centered">
+  <div class="column is-one-third-desktop is-half-tablet">
+    <div class="box mt-5">
+      <h1 class="title is-4 has-text-centered">
+        {{ icon("teacher", "mr-2") }} Cadastro de professor
+      </h1>
+
+      {% if invalido %}
+        <div class="notification is-warning is-light">
+          Este link de convite é inválido ou já foi utilizado. Solicite um novo link à administração.
+        </div>
+      {% else %}
+        {% if erro %}
+          <div class="notification is-danger is-light">{{ erro }}</div>
+        {% endif %}
+        <p class="subtitle is-6 has-text-grey has-text-centered">Crie seu acesso para visualizar sua grade.</p>
+        <form method="post" action="/convite/{{ token }}">
+          <div class="field">
+            <label class="label" for="nome">Nome completo</label>
+            <div class="control">
+              <input id="nome" class="input" type="text" name="nome" required autofocus />
+            </div>
+          </div>
+          <div class="field">
+            <label class="label" for="email">E-mail</label>
+            <div class="control">
+              <input id="email" class="input" type="email" name="email" required />
+            </div>
+          </div>
+          <div class="field">
+            <label class="label" for="senha">Senha</label>
+            <div class="control">
+              <input id="senha" class="input" type="password" name="senha" minlength="6" required />
+            </div>
+            <p class="help">Mínimo de 6 caracteres.</p>
+          </div>
+          <div class="field mt-4">
+            <button type="submit" class="button is-success is-fullwidth">Criar acesso</button>
+          </div>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

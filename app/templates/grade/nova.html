@@ -31,20 +31,6 @@
   {% endif %}
 
   <form id="gerar-form" class="cc-card">
-    <div class="field">
-      <label class="label" for="grade-semestre">Semestre</label>
-      <div class="control">
-        <div class="select is-fullwidth">
-          <select id="grade-semestre" name="semestre">
-            {% for sem in semestres %}
-              <option value="{{ sem }}">{{ sem }}</option>
-            {% endfor %}
-          </select>
-        </div>
-      </div>
-      <p class="help has-text-grey">Apenas turmas vinculadas a este semestre são consideradas.</p>
-    </div>
-
     <div class="field mt-4">
       <label class="label">Como gerar?</label>
       <div class="columns is-variable is-4">

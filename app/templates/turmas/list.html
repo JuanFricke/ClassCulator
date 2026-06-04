@@ -11,7 +11,7 @@
     </ul>
   </nav>
 
-  {{ page_header("Turmas", "users", "Gerencie turmas, semestres e currículo.", "/turmas/novo", "Nova turma") }}
+  {{ page_header("Turmas", "users", "Gerencie turmas e currículo.", "/turmas/novo", "Nova turma") }}
   <div class="notification is-link is-light">
     <strong>Fluxo recomendado:</strong> complete o currículo de cada turma de acordo com seu próprio total de períodos (sum(slots_por_dia)) para liberar a geração sem falhas.
     <a class="ml-2" href="/onboarding">Abrir configuração guiada</a>
@@ -25,7 +25,6 @@
             <tr>
               <th>Identificador</th>
               <th>Ensino</th>
-              <th>Semestre</th>
               <th>Alunos</th>
               <th>Completude</th>
               <th class="has-text-right">Ações</th>
@@ -44,7 +43,6 @@
                     <span class="tag is-info is-light">Ambos</span>
                   {% endif %}
                 </td>
-                <td>{{ t.semestre }}</td>
                 <td>{{ t.qtd_alunos }}</td>
                 {% set carga = carga_por_turma.get(t.id, 0) %}
                 {% set alvo = alvo_por_turma.get(t.id, carga_alvo) %}

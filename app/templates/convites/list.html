@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_header, empty_state %}
+
+{% block title %}Convites de professores · ClassCulator{% endblock %}
+
+{% block content %}
+{{ page_header("Convites de professores", "teacher", "Gere um link e envie ao professor. Ele usa o link para criar o próprio acesso.") }}
+
+<form method="post" action="/convites" class="mb-4">
+  <button type="submit" class="button is-info">{{ icon("wand", "mr-1") }} Gerar novo link de convite</button>
+</form>
+
+{% if convites %}
+<div class="box">
+  <table class="table is-fullwidth is-hoverable">
+    <thead>
+      <tr><th>Link</th><th>Status</th><th>Criado em</th></tr>
+    </thead>
+    <tbody>
+      {% for c in convites %}
+      <tr>
+        <td>
+          {% if c.usado %}
+            <span class="has-text-grey">{{ base_url }}/convite/{{ c.token }}</span>
+          {% else %}
+            <div class="field has-addons">
+              <div class="control is-expanded">
+                <input class="input is-small" type="text" readonly
+                       value="{{ base_url }}/convite/{{ c.token }}"
+                       onclick="this.select()" />
+              </div>
+            </div>
+          {% endif %}
+        </td>
+        <td>
+          {% if c.usado %}
+            <span class="tag is-light">Utilizado</span>
+          {% else %}
+            <span class="tag is-success is-light">Disponível</span>
+          {% endif %}
+        </td>
+        <td class="has-text-grey is-size-7">{{ c.criado_em.strftime('%d/%m/%Y %H:%M') if c.criado_em else '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+  {{ empty_state("Nenhum convite gerado ainda.") }}
+{% endif %}
+{% endblock %}

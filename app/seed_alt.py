@@ -26,12 +26,17 @@ from __future__ import annotations
 import asyncio
 import logging
 
-from sqlalchemy import delete
+from sqlalchemy import delete, select
 
+from app.core.config import settings
 from app.core.database import AsyncSessionLocal
 from app.core.ensino import infer_disciplina_ensino
+from app.core.security import hash_senha
 from app.models import (
+    PAPEL_EMPRESA,
     AlocacaoSlot,
+    AnoLetivo,
+    ConviteProfessor,
     Disciplina,
     DisponibilidadeProfessor,
     GradeHoraria,
@@ -40,6 +45,7 @@ from app.models import (
     Sala,
     Turma,
     TurmaDisciplina,
+    Usuario,
 )
 from app.models.sala import SalaTipo
 from app.solver.domain import DIAS, SLOTS_DIA_MAX
@@ -386,7 +392,7 @@ DISCIPLINAS_PROFESSOR_FIXO: frozenset[str] = frozenset(
 )
 
 
-SEMESTRE = "2026/1"
+ANO_SEED = 2026
 
 
 async def reset_db(session) -> None:
@@ -399,7 +405,28 @@ async def reset_db(session) -> None:
     await session.execute(delete(Disciplina))
     await session.execute(delete(Professor))
     await session.execute(delete(Sala))
+    await session.execute(delete(ConviteProfessor))
+    await session.execute(delete(AnoLetivo))
     await session.commit()
+
+
+async def _garantir_usuario_empresa(session) -> None:
+    email = settings.EMPRESA_EMAIL.strip().lower()
+    existente = (
+        await session.execute(select(Usuario).where(Usuario.email == email))
+    ).scalar_one_or_none()
+    if existente is None:
+        session.add(
+            Usuario(
+                nome=settings.EMPRESA_NOME,
+                email=email,
+                senha_hash=hash_senha(settings.EMPRESA_SENHA),
+                papel=PAPEL_EMPRESA,
+                ativo=True,
+            )
+        )
+        await session.commit()
+        logger.info("Usuário empresa criado: %s", email)
 
 
 def _ensino_para_disciplina(nome: str) -> str:
@@ -548,10 +575,19 @@ async def seed() -> None:
         logger.info("Limpando tabelas…")
         await reset_db(session)
 
+        await _garantir_usuario_empresa(session)
+
+        logger.info("Criando ano letivo %d…", ANO_SEED)
+        ano = AnoLetivo(ano=ANO_SEED)
+        session.add(ano)
+        await session.flush()
+        ano_id = ano.id
+
         logger.info("Criando %d disciplinas…", len(DISCIPLINAS))
         disciplinas: dict[str, Disciplina] = {}
         for nome, area, carga, lab, teor in DISCIPLINAS:
             obj = Disciplina(
+                ano_letivo_id=ano_id,
                 nome=nome,
                 ensino=_ensino_para_disciplina(nome),
                 area=area,
@@ -569,12 +605,12 @@ async def seed() -> None:
             sum(1 for _, t, _ in SALAS if t == SalaTipo.LAB),
         )
         for nome, tipo, cap in SALAS:
-            session.add(Sala(nome=nome, tipo=tipo, capacidade=cap))
+            session.add(Sala(ano_letivo_id=ano_id, nome=nome, tipo=tipo, capacidade=cap))
 
         logger.info("Criando %d professores…", len(PROFESSORES))
         professores: dict[str, Professor] = {}
         for nome, email, leciona, indisp in PROFESSORES:
-            prof = Professor(nome=nome, email=email)
+            prof = Professor(ano_letivo_id=ano_id, nome=nome, email=email)
             session.add(prof)
             await session.flush()
             for disc_nome in leciona:
@@ -601,9 +637,9 @@ async def seed() -> None:
         ):
             for idx, (ident, spd) in enumerate(turmas):
                 turma = Turma(
+                    ano_letivo_id=ano_id,
                     identificador=ident,
                     ensino=_ensino_para_turma(ident),
-                    semestre=SEMESTRE,
                     qtd_alunos=_qtd_alunos(ident),
                     slots_por_dia=list(spd),
                 )

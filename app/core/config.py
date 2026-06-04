@@ -13,6 +13,10 @@ class Settings(BaseSettings):
     APP_PORT: int = 8000
     SECRET_KEY: str = "dev-secret-change-me"
 
+    EMPRESA_NOME: str = "Administração"
+    EMPRESA_EMAIL: str = "empresa@classculator.local"
+    EMPRESA_SENHA: str = "trocar-esta-senha"
+
     DATABASE_URL: str = Field(
         default="postgresql+asyncpg://classculator:classculator@db:5432/classculator"
     )

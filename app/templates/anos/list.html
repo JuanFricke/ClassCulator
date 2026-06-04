@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_header, empty_state %}
+
+{% block title %}Anos letivos · ClassCulator{% endblock %}
+
+{% block content %}
+{{ page_header("Anos letivos", "calendar", "Cada ano é uma base independente. Ao criar um novo ano, os dados do ano de origem são clonados (mas passam a ser independentes).") }}
+
+{% if erro %}
+  <div class="notification is-danger is-light">{{ erro }}</div>
+{% endif %}
+
+<div class="columns">
+  <div class="column is-two-thirds">
+    {% if anos %}
+    <div class="box">
+      <table class="table is-fullwidth is-hoverable">
+        <thead>
+          <tr><th>Ano</th><th>Status</th><th class="has-text-right">Ações</th></tr>
+        </thead>
+        <tbody>
+          {% for a in anos %}
+          <tr>
+            <td><strong>{{ a.ano }}</strong></td>
+            <td>
+              {% if a.id == ano_atual_id %}
+                <span class="tag is-success is-light">Selecionado</span>
+              {% else %}
+                <span class="tag is-light">—</span>
+              {% endif %}
+            </td>
+            <td class="has-text-right">
+              <form method="post" action="/anos/selecionar" class="is-inline">
+                <input type="hidden" name="ano_id" value="{{ a.id }}" />
+                <button type="submit" class="button is-small is-info {% if a.id == ano_atual_id %}is-light{% endif %}">
+                  {{ icon("check", "mr-1") }} {% if a.id == ano_atual_id %}Entrar{% else %}Selecionar e entrar{% endif %}
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+      {{ empty_state("Nenhum ano letivo cadastrado ainda. Crie o primeiro ao lado.") }}
+    {% endif %}
+  </div>
+
+  <div class="column">
+    <div class="box">
+      <h3 class="title is-6">{{ icon("wand", "mr-1") }} Criar novo ano</h3>
+      <form method="post" action="/anos/criar">
+        <div class="field">
+          <label class="label" for="ano">Ano</label>
+          <div class="control">
+            <input id="ano" class="input" type="number" name="ano" min="2000" max="2100"
+                   value="{{ sugestao_ano }}" required />
+          </div>
+        </div>
+        {% if anos %}
+        <div class="field">
+          <label class="label" for="clonar_de">Clonar dados de</label>
+          <div class="control">
+            <div class="select is-fullwidth">
+              <select id="clonar_de" name="clonar_de">
+                <option value="">Começar vazio</option>
+                {% for a in anos %}
+                  <option value="{{ a.id }}" {% if a.id == ano_atual_id %}selected{% endif %}>{{ a.ano }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          <p class="help">Copia professores, disciplinas, salas, turmas e currículos. As grades não são copiadas.</p>
+        </div>
+        {% endif %}
+        <div class="field mt-4">
+          <button type="submit" class="button is-success is-fullwidth">Criar ano</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

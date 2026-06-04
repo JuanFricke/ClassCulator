@@ -24,6 +24,7 @@ dependencies = [
     "psycopg[binary]>=3.2.3",
     "alembic>=1.14.0",
     "ortools>=9.11.4210",
+    "itsdangerous>=2.2.0",
 ]
 
 [project.optional-dependencies]
