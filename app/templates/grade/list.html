@@ -23,7 +23,6 @@
           <thead>
             <tr>
               <th>Quando</th>
-              <th>Semestre</th>
               <th>Versão</th>
               <th>Status</th>
               <th>Qualidade</th>
@@ -35,7 +34,6 @@
             {% for g in grades %}
               <tr>
                 <td>{{ g.criado_em.strftime("%d/%m/%Y %H:%M") }}</td>
-                <td><strong>{{ g.semestre }}</strong></td>
                 <td>v{{ g.versao }}</td>
                 <td>{{ status_tag(g.status) }}</td>
                 <td>

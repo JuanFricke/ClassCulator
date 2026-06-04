@@ -28,13 +28,19 @@ PESO_SC4 = 200
 
 
 def violacoes_hard(
-    instance: ProblemInstance, assignments: dict[int, tuple[int, int]]
+    instance: ProblemInstance,
+    assignments: dict[int, tuple[int, int]],
+    professor_por_aula: dict[int, int] | None = None,
 ) -> list[str]:
     """Retorna a lista de descrições de violações de hard constraints (vazia → válida)."""
 
     violacoes: list[str] = []
 
     by_aula = {a.idx: a for a in instance.aulas}
+    prof_map = professor_por_aula or {}
+
+    def prof_de(idx: int) -> int | None:
+        return prof_map.get(idx, by_aula[idx].professor_id)
 
     # HC1 — todas as aulas atribuídas
     if len(assignments) != len(instance.aulas):
@@ -55,10 +61,12 @@ def violacoes_hard(
     # HC3 — professor exclusivo por slot
     prof_slot: dict[tuple[int, int, int], int] = {}
     for idx, (dia, slot) in assignments.items():
-        a = by_aula[idx]
-        chave = (a.professor_id, dia, slot)
+        pid = prof_de(idx)
+        if pid is None:
+            continue
+        chave = (pid, dia, slot)
         if chave in prof_slot:
-            violacoes.append(f"HC3: professor {a.professor_id} duplicado em ({dia},{slot}).")
+            violacoes.append(f"HC3: professor {pid} duplicado em ({dia},{slot}).")
         else:
             prof_slot[chave] = idx
 
@@ -86,10 +94,12 @@ def violacoes_hard(
 
     # HC5 — professor disponível
     for idx, (dia, slot) in assignments.items():
-        a = by_aula[idx]
-        if not instance.professor_disponivel(a.professor_id, dia, slot):
+        pid = prof_de(idx)
+        if pid is None:
+            continue
+        if not instance.professor_disponivel(pid, dia, slot):
             violacoes.append(
-                f"HC5: professor {a.professor_id} indisponível em ({dia},{slot})."
+                f"HC5: professor {pid} indisponível em ({dia},{slot})."
             )
 
     # HC6 — toda turma com >= HC6_MIN_AULAS_DIA aulas em cada dia útil
@@ -141,7 +151,9 @@ def violacoes_hard(
 
 
 def calcular_score(
-    instance: ProblemInstance, assignments: dict[int, tuple[int, int]]
+    instance: ProblemInstance,
+    assignments: dict[int, tuple[int, int]],
+    professor_por_aula: dict[int, int] | None = None,
 ) -> tuple[float, dict[str, int]]:
     """Calcula a função de penalidade (Σ pesoᵢ × violaçõesᵢ).
 
@@ -149,11 +161,15 @@ def calcular_score(
     """
 
     by_aula = {a.idx: a for a in instance.aulas}
+    prof_map = professor_por_aula or {}
 
-    sc1 = _sc1_janelas_professor(instance, assignments, by_aula)
+    def prof_de(idx: int) -> int | None:
+        return prof_map.get(idx, by_aula[idx].professor_id)
+
+    sc1 = _sc1_janelas_professor(instance, assignments, by_aula, prof_de)
     sc2 = _sc2_areas_consecutivas(instance, assignments, by_aula)
     sc3 = _sc3_blocos_teoricos(instance, assignments, by_aula)
-    sc4 = _sc4_prof_turma_split(instance, assignments, by_aula)
+    sc4 = _sc4_prof_turma_split(instance, assignments, by_aula, prof_de)
 
     score = PESO_SC1 * sc1 + PESO_SC2 * sc2 + PESO_SC3 * sc3 + PESO_SC4 * sc4
     return score, {"SC1": sc1, "SC2": sc2, "SC3": sc3, "SC4": sc4}
@@ -163,12 +179,15 @@ def _sc1_janelas_professor(
     instance: ProblemInstance,
     assignments: dict[int, tuple[int, int]],
     by_aula: dict,
+    prof_de,
 ) -> int:
     """Conta janelas vazias entre primeira e última aula do professor em cada dia."""
 
     por_prof_dia: dict[tuple[int, int], list[int]] = {}
     for idx, (dia, slot) in assignments.items():
-        prof = by_aula[idx].professor_id
+        prof = prof_de(idx)
+        if prof is None:
+            continue
         por_prof_dia.setdefault((prof, dia), []).append(slot)
 
     janelas = 0
@@ -239,6 +258,7 @@ def _sc4_prof_turma_split(
     instance: ProblemInstance,
     assignments: dict[int, tuple[int, int]],
     by_aula: dict,
+    prof_de,
 ) -> int:
     """Conta "splits" entre aulas do mesmo (professor, turma, dia).
 
@@ -251,7 +271,10 @@ def _sc4_prof_turma_split(
     grupos: dict[tuple[int, int, int], list[int]] = {}
     for idx, (dia, slot) in assignments.items():
         a = by_aula[idx]
-        grupos.setdefault((a.professor_id, a.turma_id, dia), []).append(slot)
+        pid = prof_de(idx)
+        if pid is None:
+            continue
+        grupos.setdefault((pid, a.turma_id, dia), []).append(slot)
 
     splits = 0
     for slots in grupos.values():

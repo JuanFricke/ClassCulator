@@ -1,14 +1,14 @@
 {% extends "base.html" %}
 {% from "_macros.html" import icon, status_tag, solver_label, quality %}
 
-{% block title %}Grade v{{ grade.versao }} · {{ grade.semestre }}{% endblock %}
+{% block title %}Grade v{{ grade.versao }} · {{ ano_atual.ano if ano_atual else '' }}{% endblock %}
 
 {% block content %}
   <nav class="breadcrumb no-print" aria-label="breadcrumbs">
     <ul>
       <li><a href="/">Painel</a></li>
       <li><a href="/grade">Grades</a></li>
-      <li class="is-active"><a href="#" aria-current="page">v{{ grade.versao }} — {{ grade.semestre }}</a></li>
+      <li class="is-active"><a href="#" aria-current="page">v{{ grade.versao }} — {{ ano_atual.ano if ano_atual else '' }}</a></li>
     </ul>
   </nav>
 
@@ -25,7 +25,7 @@
     <div class="level-left">
       <div>
         <h1 class="title">
-          {{ icon("calendar", "mr-2") }}Grade · {{ grade.semestre }}
+          {{ icon("calendar", "mr-2") }}Grade · {{ ano_atual.ano if ano_atual else '' }}
         </h1>
         <p class="subtitle is-6 has-text-grey">
           Versão {{ grade.versao }} · {{ status_tag(grade.status) }}
@@ -36,6 +36,9 @@
       {% if grade.status.value == 'done' %}
         <button class="button is-light" onclick="window.print()">
           {{ icon("print", "mr-1") }} Imprimir
+        </button>
+        <button class="button is-warning is-light ml-2" id="grade-edit-toggle" type="button" aria-pressed="false">
+          {{ icon("book", "mr-1") }} Editar manualmente
         </button>
         <a class="button is-link is-light ml-2" href="/grade/nova">
           {{ icon("play", "mr-1") }} Gerar outra
@@ -173,7 +176,14 @@
                     {% if slot >= turma_slots[dia] %}
                       <td class="grade-cell grade-cell--off" aria-label="fora do expediente"></td>
                     {% else %}
-                      <td class="grade-cell" data-area="{{ cell.disciplina.area if cell else '' }}">
+                      <td class="grade-cell"
+                          data-area="{{ cell.disciplina.area if cell else '' }}"
+                          data-turma-id="{{ turma.id }}"
+                          data-dia="{{ dia }}"
+                          data-slot="{{ slot }}"
+                          data-disciplina-id="{{ cell.disciplina.id if cell else '' }}"
+                          data-professor-id="{{ cell.professor.id if cell else '' }}"
+                          data-sala-id="{{ cell.sala.id if (cell and cell.sala) else '' }}">
                         {% if cell %}
                           <strong>{{ cell.disciplina.nome }}</strong>
                           <span>{{ cell.professor.nome }}</span>
@@ -193,6 +203,70 @@
       </section>
     {% endfor %}
 
+    <script type="application/json" id="grade-edit-data">
+    {
+      "gradeId": {{ grade.id }},
+      "disciplinas": [{% for d in disciplinas_lista %}{"id": {{ d.id }}, "nome": {{ d.nome|tojson }}, "area": {{ d.area|tojson }}}{% if not loop.last %},{% endif %}{% endfor %}],
+      "professores": [{% for p in professores_lista %}{"id": {{ p.id }}, "nome": {{ p.nome|tojson }}}{% if not loop.last %},{% endif %}{% endfor %}],
+      "salas": [{% for s in salas_lista %}{"id": {{ s.id }}, "nome": {{ s.nome|tojson }}}{% if not loop.last %},{% endif %}{% endfor %}],
+      "professoresPorDisciplina": {{ professores_por_disciplina|tojson }}
+    }
+    </script>
+
+    <div class="modal no-print" id="cell-editor-modal">
+      <div class="modal-background"></div>
+      <div class="modal-card">
+        <header class="modal-card-head">
+          <p class="modal-card-title">Editar horário</p>
+          <button class="delete" aria-label="fechar" id="cell-editor-close" type="button"></button>
+        </header>
+        <section class="modal-card-body">
+          <div class="field">
+            <label class="label" for="cell-editor-disciplina">Disciplina</label>
+            <div class="control">
+              <div class="select is-fullwidth">
+                <select id="cell-editor-disciplina"><option value="">— Vazio —</option></select>
+              </div>
+            </div>
+          </div>
+          <div class="field">
+            <label class="label" for="cell-editor-professor">Professor</label>
+            <div class="control">
+              <div class="select is-fullwidth">
+                <select id="cell-editor-professor"></select>
+              </div>
+            </div>
+          </div>
+          <div class="field">
+            <label class="label" for="cell-editor-sala">Sala (opcional)</label>
+            <div class="control">
+              <div class="select is-fullwidth">
+                <select id="cell-editor-sala"><option value="">— Sem sala —</option></select>
+              </div>
+            </div>
+          </div>
+          <p class="help is-danger is-hidden" id="cell-editor-error"></p>
+        </section>
+        <footer class="modal-card-foot">
+          <button class="button is-link" id="cell-editor-apply" type="button">Aplicar</button>
+          <button class="button is-danger is-light" id="cell-editor-clear" type="button">Esvaziar célula</button>
+          <button class="button" id="cell-editor-cancel" type="button">Cancelar</button>
+        </footer>
+      </div>
+    </div>
+
+    <div class="grade-edit-bar no-print is-hidden" id="grade-edit-bar">
+      <span class="grade-edit-hint">
+        {{ icon("info", "mr-1") }}
+        Modo de edição: arraste uma matéria para mover/trocar (mesma turma) ou clique numa célula para editar. Salva como uma nova grade.
+      </span>
+      <div class="grade-edit-actions">
+        <button class="button is-success" id="grade-edit-save" type="button">Salvar como nova grade</button>
+        <button class="button is-light" id="grade-edit-cancel" type="button">Cancelar edição</button>
+      </div>
+      <div class="notification is-danger is-light is-hidden mt-2" id="grade-edit-feedback"></div>
+    </div>
+
     {% if grade.log %}
       <details class="mt-5 no-print" id="registro-tecnico-geracao">
         <summary class="has-text-grey">Registro técnico da geração</summary>
@@ -204,4 +278,5 @@
 
 {% block scripts %}
   <script src="/static/js/grade-detail.js" defer></script>
+  <script src="/static/js/grade-edit.js" defer></script>
 {% endblock %}

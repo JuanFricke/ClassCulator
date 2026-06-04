@@ -8,6 +8,12 @@ class Professor(Base):
     __tablename__ = "professores"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    ano_letivo_id: Mapped[int] = mapped_column(
+        ForeignKey("anos_letivos.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    usuario_id: Mapped[int | None] = mapped_column(
+        ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     nome: Mapped[str] = mapped_column(String(120), nullable=False)
     email: Mapped[str | None] = mapped_column(String(120), nullable=True)
 

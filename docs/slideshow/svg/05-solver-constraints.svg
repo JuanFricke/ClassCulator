@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <defs>
+    <filter id="shadow" x="-4%" y="-8%" width="108%" height="116%">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#0f172a" flood-opacity="0.12"/>
+    </filter>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f8fafc"/>
+      <stop offset="100%" stop-color="#e2e8f0"/>
+    </linearGradient>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#bg)"/>
+  <rect x="0" y="0" width="1920" height="8" fill="#2563eb"/>
+
+  <text x="960" y="95" text-anchor="middle" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="56" font-weight="700" fill="#0f172a">Solver</text>
+  <text x="960" y="155" text-anchor="middle" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="36" fill="#64748b">constraints e pipeline</text>
+
+  <g filter="url(#shadow)" font-family="system-ui,Segoe UI,Arial,sans-serif">
+    <rect x="60" y="200" width="560" height="520" rx="20" fill="#ffffff" stroke="#16a34a" stroke-width="4"/>
+    <text x="340" y="270" text-anchor="middle" font-size="44" font-weight="700" fill="#166534">Hard (HC)</text>
+    <text x="100" y="340" font-size="30" fill="#334155">HC1 &#8212; carga exata por disciplina</text>
+    <text x="100" y="395" font-size="30" fill="#334155">HC2 &#8212; 1 aula por slot / turma</text>
+    <text x="100" y="450" font-size="30" fill="#334155">HC3 &#8212; professor exclusivo</text>
+    <text x="100" y="505" font-size="30" fill="#334155">HC4 &#8212; m&#237;n. aulas na quarta</text>
+    <text x="100" y="560" font-size="30" fill="#334155">HC5 &#8212; disponibilidade</text>
+    <text x="100" y="615" font-size="30" fill="#334155">HC6 &#8212; &#8805;1 aula/dia &#250;til</text>
+    <text x="100" y="670" font-size="30" fill="#334155">HC7 &#8212; sum(slots_por_dia)</text>
+
+    <rect x="680" y="200" width="560" height="520" rx="20" fill="#ffffff" stroke="#ea580c" stroke-width="4"/>
+    <text x="960" y="270" text-anchor="middle" font-size="44" font-weight="700" fill="#c2410c">Soft (SC)</text>
+    <text x="720" y="360" font-size="32" fill="#334155">SC1 &#8212; janelas professor</text>
+    <text x="720" y="420" font-size="32" fill="#334155">peso 100</text>
+    <text x="720" y="490" font-size="32" fill="#334155">SC2 &#8212; mesma &#225;rea consecutiva</text>
+    <text x="720" y="550" font-size="32" fill="#334155">peso 30</text>
+    <text x="720" y="620" font-size="32" fill="#334155">SC3 &#8212; 3+ te&#243;ricas sem lab</text>
+    <text x="720" y="680" font-size="32" fill="#334155">peso 50 &#183; SC4 splits peso 200</text>
+
+    <rect x="1300" y="200" width="560" height="520" rx="20" fill="#dbeafe" stroke="#2563eb" stroke-width="4"/>
+    <text x="1580" y="270" text-anchor="middle" font-size="44" font-weight="700" fill="#1e3a8a">Pipeline</text>
+    <text x="1340" y="360" font-size="32" fill="#334155">1. build_instance(DB)</text>
+    <text x="1340" y="430" font-size="32" fill="#334155">2. ProblemInstance</text>
+    <text x="1340" y="500" font-size="32" fill="#334155">3. runner &#8594; cpsat | classic</text>
+    <text x="1340" y="570" font-size="32" fill="#334155">4. AlocacaoSlot</text>
+    <text x="1340" y="650" font-size="28" fill="#64748b">Grid: 5 dias &#215; 8 slots m&#225;x.</text>
+  </g>
+
+  <rect x="60" y="760" width="1800" height="260" rx="20" fill="#ffffff" stroke="#9333ea" stroke-width="3" filter="url(#shadow)"/>
+  <text x="960" y="840" text-anchor="middle" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="40" font-weight="700" fill="#6b21a8">Turma.slots_por_dia</text>
+  <text x="960" y="905" text-anchor="middle" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="34" fill="#334155">EFA: [6,6,6,6,6] = 30 per&#237;odos &#183; EM: [5,5,5,5,3] = 23 per&#237;odos</text>
+  <text x="960" y="965" text-anchor="middle" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="32" fill="#64748b">Curr&#237;culo deve somar exatamente sum(slots_por_dia) &#8212; valida&#231;&#227;o 422 antes do solver</text>
+</svg>

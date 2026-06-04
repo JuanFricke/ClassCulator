@@ -55,13 +55,6 @@
         </div>
       </div>
       <div class="field is-expanded">
-        <label class="label" for="turma-semestre">Semestre</label>
-        <div class="control">
-          <input id="turma-semestre" class="input" name="semestre" maxlength="20"
-                 value="{{ turma.semestre if turma else '2026/1' }}" />
-        </div>
-      </div>
-      <div class="field is-expanded">
         <label class="label" for="turma-qtd-alunos">Quantos alunos?</label>
         <div class="control">
           <input id="turma-qtd-alunos" class="input" type="number" name="qtd_alunos" min="1" max="200"
@@ -198,6 +191,7 @@
                 <td>
                   <div class="select is-fullwidth">
                     <select name="professor_id">
+                      <option value="" {% if not item.professor_id %}selected{% endif %}>Automático (sem preferência)</option>
                       {% for p in professores %}
                         <option value="{{ p.id }}" {% if p.id == item.professor_id %}selected{% endif %}>
                           {{ p.nome }}
@@ -233,6 +227,7 @@
           <td>
             <div class="select is-fullwidth">
               <select name="professor_id">
+                <option value="" selected>Automático (sem preferência)</option>
                 {% for p in professores %}
                   <option value="{{ p.id }}">{{ p.nome }}</option>
                 {% endfor %}

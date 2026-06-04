@@ -73,7 +73,7 @@ async function pollUntilDone(gradeId) {
     }
 
     const label = STATUS_LABEL[data.status] || data.status;
-    progressoMsg.textContent = `${label} (semestre ${data.semestre})`;
+    progressoMsg.textContent = label;
 
     await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
   }
@@ -88,7 +88,6 @@ form?.addEventListener("submit", async (event) => {
 
   const data = new FormData(form);
   const payload = {
-    semestre: data.get("semestre"),
     solver: data.get("solver"),
     timeout_s: parseInt(data.get("timeout_s"), 10),
   };

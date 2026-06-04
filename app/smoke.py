@@ -10,8 +10,11 @@ from __future__ import annotations
 import asyncio
 import logging
 
+from sqlalchemy import select
+
 from app.core.config import settings
 from app.core.database import AsyncSessionLocal
+from app.models import AnoLetivo
 from app.solver.builder import build_instance
 from app.solver.constraints import violacoes_hard
 from app.solver.runner import run_solver
@@ -22,7 +25,12 @@ logging.basicConfig(level=logging.INFO, format="%(message)s")
 
 async def main() -> None:
     async with AsyncSessionLocal() as session:
-        instance = await build_instance(session, "2026/1")
+        ano = (
+            await session.execute(select(AnoLetivo).order_by(AnoLetivo.ano.desc()).limit(1))
+        ).scalar_one_or_none()
+        if ano is None:
+            raise SystemExit("Nenhum ano letivo encontrado. Rode `python -m app.seed` primeiro.")
+        instance = await build_instance(session, ano.id)
         logger.info(
             "Instância construída: %d turmas · %d disciplinas · %d professores · %d aulas.",
             len(instance.turmas),
@@ -40,7 +48,7 @@ async def main() -> None:
             hill_iters=settings.HILL_CLIMBING_ITERATIONS,
         )
         logger.info("status=%s score=%.0f tempo=%.2fs", result.status.value, result.score, result.elapsed_s)
-        violacoes = violacoes_hard(instance, result.assignments)
+        violacoes = violacoes_hard(instance, result.assignments, result.professor_por_aula)
         if violacoes:
             logger.warning("VIOLAÇÕES de hard constraints (%d):", len(violacoes))
             for v in violacoes[:10]:

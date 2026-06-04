@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <defs>
+    <filter id="shadow" x="-4%" y="-8%" width="108%" height="116%">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#0f172a" flood-opacity="0.12"/>
+    </filter>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f8fafc"/>
+      <stop offset="100%" stop-color="#e2e8f0"/>
+    </linearGradient>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#bg)"/>
+  <rect x="0" y="0" width="1920" height="8" fill="#2563eb"/>
+
+  <text x="960" y="95" text-anchor="middle" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="56" font-weight="700" fill="#0f172a">ClassCulator</text>
+  <text x="960" y="155" text-anchor="middle" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="36" font-weight="600" fill="#334155">Vis&#227;o em camadas</text>
+  <text x="960" y="205" text-anchor="middle" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="30" fill="#64748b">Gera&#231;&#227;o autom&#225;tica de grade hor&#225;ria escolar</text>
+
+  <g filter="url(#shadow)">
+    <rect x="80" y="250" width="1760" height="118" rx="16" fill="#dbeafe" stroke="#2563eb" stroke-width="3"/>
+    <text x="120" y="320" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="38" font-weight="700" fill="#1e3a8a">Apresenta&#231;&#227;o</text>
+    <text x="120" y="365" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="30" fill="#334155">Jinja2 &#183; Bulma &#183; JavaScript (Fetch, polling 2 s)</text>
+
+    <rect x="80" y="388" width="1760" height="118" rx="16" fill="#ffedd5" stroke="#ea580c" stroke-width="3"/>
+    <text x="120" y="458" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="38" font-weight="700" fill="#9a3412">API REST</text>
+    <text x="120" y="503" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="30" fill="#334155">FastAPI /api/v1 &#183; Pydantic v2</text>
+
+    <rect x="80" y="526" width="1760" height="118" rx="16" fill="#f3e8ff" stroke="#9333ea" stroke-width="3"/>
+    <text x="120" y="596" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="38" font-weight="700" fill="#6b21a8">Servi&#231;os</text>
+    <text x="120" y="641" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="30" fill="#334155">grade_service &#183; BackgroundTasks (gera&#231;&#227;o ass&#237;ncrona)</text>
+
+    <rect x="80" y="664" width="1760" height="118" rx="16" fill="#dcfce7" stroke="#16a34a" stroke-width="3"/>
+    <text x="120" y="734" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="38" font-weight="700" fill="#166534">Solver</text>
+    <text x="120" y="779" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="30" fill="#334155">domain &#183; builder &#183; constraints &#183; CP-SAT &#183; cl&#225;ssico</text>
+
+    <rect x="80" y="802" width="1760" height="118" rx="16" fill="#fce7f3" stroke="#db2777" stroke-width="3"/>
+    <text x="120" y="872" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="38" font-weight="700" fill="#9d174d">Persist&#234;ncia</text>
+    <text x="120" y="917" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="30" fill="#334155">SQLAlchemy 2.0 async &#183; PostgreSQL 15 &#183; Alembic</text>
+
+    <rect x="80" y="940" width="1760" height="118" rx="16" fill="#f1f5f9" stroke="#475569" stroke-width="3"/>
+    <text x="120" y="1010" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="38" font-weight="700" fill="#1e293b">Infraestrutura</text>
+    <text x="120" y="1055" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="30" fill="#334155">Docker Compose &#183; uv &#183; Uvicorn :8000</text>
+  </g>
+</svg>

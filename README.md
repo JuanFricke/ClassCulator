@@ -85,7 +85,7 @@ app/
 ## Modelo do problema
 
 Calendário: **5 dias úteis (segunda a sexta)**. Cada turma tem seu próprio
-`slots_por_dia` (vetor de 5 inteiros entre 0 e `SLOTS_DIA_MAX = 8`); a carga
+`slots_por_dia` (vetor de 5 inteiros entre 0 e `SLOTS_DIA_MAX = 15`); a carga
 semanal alvo da turma é `sum(slots_por_dia)`. O dataset padrão (`app.seed`,
 EFA Francisco de Assis) usa `[6,6,6,6,6] = 30` em todas as turmas — caso
 retangular, ainda suportado pelo solver clássico. Datasets com janela

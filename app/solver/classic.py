@@ -40,6 +40,21 @@ def solve_classic(
 
     log_lines: list[str] = []
 
+    # Guarda: o solver clássico usa o professor fixado em cada aula
+    # (aula.professor_id). Itens "sem preferência" (professor_id None) só são
+    # resolvidos pelo CP-SAT, que escolhe o professor ideal.
+    if any(a.professor_id is None for a in instance.aulas):
+        return SolverResult(
+            status=SolverStatus.ERROR,
+            elapsed_s=time.monotonic() - started,
+            log=(
+                "O solver clássico exige um professor fixado em cada item do "
+                "currículo. Há itens marcados como 'sem preferência' "
+                "(professor automático). Use solver='cpsat' para que o solver "
+                "escolha o professor ideal automaticamente."
+            ),
+        )
+
     # Guarda: o solver clássico ainda assume grade retangular 5 × SLOTS_DIA.
     # Para datasets com `slots_por_dia` irregular (ex.: app.seed_alt), retornamos
     # erro amigável e direcionamos o usuário ao CP-SAT.

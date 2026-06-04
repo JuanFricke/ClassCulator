@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, page_header, empty_state %}
+
+{% block title %}Meu portal · ClassCulator{% endblock %}
+
+{% block content %}
+{{ page_header("Olá, " ~ professor.nome, "teacher", "Ano letivo " ~ ano_atual.ano) }}
+
+<!-- Minha grade -->
+<div class="box">
+  <h2 class="title is-5">{{ icon("calendar", "mr-1") }} Minha grade</h2>
+  {% if grade_cells %}
+    <div class="table-container">
+      <table class="table is-bordered is-fullwidth is-narrow has-text-centered">
+        <thead>
+          <tr>
+            <th></th>
+            {% for d in DIAS %}<th>{{ DIAS_LABELS[d] }}</th>{% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in SLOTS %}
+          <tr>
+            <th class="has-text-grey">{{ SLOT_LABELS[s] }}</th>
+            {% for d in DIAS %}
+              {% set cell = grade_cells[d][s] %}
+              <td>
+                {% if cell %}
+                  <strong>{{ cell.disciplina.nome if cell.disciplina else '—' }}</strong><br/>
+                  <small class="has-text-grey">{{ cell.turma.identificador if cell.turma else '' }}{% if cell.sala %} · {{ cell.sala.nome }}{% endif %}</small>
+                {% endif %}
+              </td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    {{ empty_state("Nenhuma grade concluída neste ano ainda. Quando a administração gerar a grade, ela aparecerá aqui.") }}
+  {% endif %}
+</div>
+
+<div class="columns">
+  <!-- Disponibilidade -->
+  <div class="column">
+    <div class="box">
+      <h2 class="title is-5">{{ icon("check", "mr-1") }} Minha disponibilidade</h2>
+      <p class="help mb-3">Marque os horários em que você <strong>não</strong> está disponível.</p>
+      <form method="post" action="/professor/disponibilidade">
+        <div class="table-container">
+          <table class="table is-bordered is-narrow is-fullwidth has-text-centered">
+            <thead>
+              <tr>
+                <th></th>
+                {% for d in DIAS %}<th>{{ DIAS_LABELS[d] }}</th>{% endfor %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for s in SLOTS %}
+              <tr>
+                <th class="has-text-grey is-size-7">{{ SLOT_LABELS[s] }}</th>
+                {% for d in DIAS %}
+                  <td>
+                    <input type="checkbox" name="ind-{{ d }}-{{ s }}"
+                           {% if (d, s) in indisponivel %}checked{% endif %} />
+                  </td>
+                {% endfor %}
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <button type="submit" class="button is-info">Salvar disponibilidade</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Disciplinas -->
+  <div class="column">
+    <div class="box">
+      <h2 class="title is-5">{{ icon("book", "mr-1") }} Minhas disciplinas</h2>
+      <p class="help mb-3">Selecione as disciplinas que você pode lecionar.</p>
+      {% if disciplinas %}
+      <form method="post" action="/professor/disciplinas">
+        <div class="content" style="max-height: 320px; overflow-y: auto;">
+          {% for d in disciplinas %}
+          <label class="checkbox is-block mb-2">
+            <input type="checkbox" name="disciplina_ids" value="{{ d.id }}"
+                   {% if d.id in minhas_disciplinas %}checked{% endif %} />
+            {{ d.nome }}
+          </label>
+          {% endfor %}
+        </div>
+        <button type="submit" class="button is-info mt-3">Salvar disciplinas</button>
+      </form>
+      {% else %}
+        <p class="has-text-grey">Nenhuma disciplina cadastrada neste ano.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

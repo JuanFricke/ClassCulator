@@ -29,20 +29,34 @@ from app.solver.domain import (
 )
 
 
-async def build_instance(session: AsyncSession, semestre: str) -> ProblemInstance:
+async def build_instance(session: AsyncSession, ano_letivo_id: int) -> ProblemInstance:
     turmas_rows = (
-        await session.execute(select(Turma).where(Turma.semestre == semestre).order_by(Turma.id))
+        await session.execute(
+            select(Turma).where(Turma.ano_letivo_id == ano_letivo_id).order_by(Turma.id)
+        )
     ).scalars().all()
     if not turmas_rows:
-        raise ValueError(f"Nenhuma turma encontrada para o semestre {semestre!r}.")
+        raise ValueError("Nenhuma turma encontrada para o ano letivo selecionado.")
 
     disciplinas_rows = (
-        await session.execute(select(Disciplina).order_by(Disciplina.id))
+        await session.execute(
+            select(Disciplina)
+            .where(Disciplina.ano_letivo_id == ano_letivo_id)
+            .order_by(Disciplina.id)
+        )
     ).scalars().all()
     professores_rows = (
-        await session.execute(select(Professor).order_by(Professor.id))
+        await session.execute(
+            select(Professor)
+            .where(Professor.ano_letivo_id == ano_letivo_id)
+            .order_by(Professor.id)
+        )
     ).scalars().all()
-    salas_rows = (await session.execute(select(Sala).order_by(Sala.id))).scalars().all()
+    salas_rows = (
+        await session.execute(
+            select(Sala).where(Sala.ano_letivo_id == ano_letivo_id).order_by(Sala.id)
+        )
+    ).scalars().all()
 
     turmas = [
         TurmaInfo(
@@ -66,9 +80,14 @@ async def build_instance(session: AsyncSession, semestre: str) -> ProblemInstanc
     professores = [ProfessorInfo(id=p.id, nome=p.nome) for p in professores_rows]
     salas = [SalaInfo(id=s.id, nome=s.nome, eh_lab=s.tipo == SalaTipo.LAB) for s in salas_rows]
 
+    professor_ids = [p.id for p in professores_rows] or [-1]
+
     indisp_rows = (
         await session.execute(
-            select(DisponibilidadeProfessor).where(DisponibilidadeProfessor.disponivel.is_(False))
+            select(DisponibilidadeProfessor).where(
+                DisponibilidadeProfessor.disponivel.is_(False),
+                DisponibilidadeProfessor.professor_id.in_(professor_ids),
+            )
         )
     ).scalars().all()
     indisponiveis: dict[int, set[tuple[int, int]]] = {}
@@ -76,7 +95,11 @@ async def build_instance(session: AsyncSession, semestre: str) -> ProblemInstanc
         indisponiveis.setdefault(d.professor_id, set()).add((d.dia, d.slot))
 
     prof_disc_rows = (
-        await session.execute(select(ProfessorDisciplina))
+        await session.execute(
+            select(ProfessorDisciplina).where(
+                ProfessorDisciplina.professor_id.in_(professor_ids)
+            )
+        )
     ).scalars().all()
     professores_por_disciplina: dict[int, list[int]] = {}
     for row in prof_disc_rows:
@@ -89,15 +112,10 @@ async def build_instance(session: AsyncSession, semestre: str) -> ProblemInstanc
         )
     ).scalars().all()
     if not curriculo_rows:
-        raise ValueError("Nenhum currículo cadastrado para as turmas do semestre.")
+        raise ValueError("Nenhum currículo cadastrado para as turmas do ano letivo.")
 
     disc_by_id = {d.id: d for d in disciplinas}
     prof_by_id = {p.id: p for p in professores}
-    capacidade_por_prof: dict[int, int] = {}
-    carga_por_prof: dict[int, int] = {}
-    for pid in prof_by_id:
-        capacidade_por_prof[pid] = (DIAS * SLOTS_DIA_MAX) - len(indisponiveis.get(pid, set()))
-        carga_por_prof[pid] = 0
 
     warnings: list[str] = []
     aulas: list[Aula] = []
@@ -106,15 +124,14 @@ async def build_instance(session: AsyncSession, semestre: str) -> ProblemInstanc
         disc = disc_by_id.get(td.disciplina_id)
         if disc is None:
             continue
-        professor_id = _resolve_professor_for_curriculo_item(
+        candidatos = _resolve_candidatos_for_curriculo_item(
             td,
             disc,
             professores_por_disciplina,
-            capacidade_por_prof,
-            carga_por_prof,
             prof_by_id,
             warnings,
         )
+        professor_id = candidatos[0] if len(candidatos) == 1 else None
         for k in range(disc.carga_semanal):
             aulas.append(
                 Aula(
@@ -123,6 +140,7 @@ async def build_instance(session: AsyncSession, semestre: str) -> ProblemInstanc
                     disciplina_id=td.disciplina_id,
                     professor_id=professor_id,
                     k=k,
+                    candidatos=candidatos,
                 )
             )
             idx += 1
@@ -223,62 +241,42 @@ def _coerce_slots_por_dia(raw: object, identificador: str) -> tuple[int, ...]:
     return tuple(valores)
 
 
-def _resolve_professor_for_curriculo_item(
+def _resolve_candidatos_for_curriculo_item(
     td: TurmaDisciplina,
     disciplina: DisciplinaInfo,
     professores_por_disciplina: dict[int, list[int]],
-    capacidade_por_prof: dict[int, int],
-    carga_por_prof: dict[int, int],
     prof_by_id: dict[int, ProfessorInfo],
     warnings: list[str],
-) -> int:
-    candidatos = professores_por_disciplina.get(td.disciplina_id, [])
-    professor_atual = td.professor_id
-    carga_disc = disciplina.carga_semanal
+) -> tuple[int, ...]:
+    """Resolve o conjunto de professores elegíveis para um item de currículo.
 
-    def restante(pid: int) -> int:
-        return capacidade_por_prof.get(pid, 0) - carga_por_prof.get(pid, 0)
+    - Professor fixado (``td.professor_id is not None``): único candidato; gera
+      um aviso se ele não estiver entre os habilitados para a disciplina.
+    - Sem preferência (``td.professor_id is None``): todos os professores
+      habilitados para a disciplina; erro se nenhum existir (o CP-SAT escolhe).
+    """
 
-    escolhido = professor_atual
-    if candidatos:
-        if professor_atual not in candidatos:
-            alt = _pick_best_professor(candidatos, capacidade_por_prof, carga_por_prof, carga_disc)
-            if alt is not None:
-                escolhido = alt
-                warnings.append(
-                    "[autoajuste] "
-                    f"Turma {td.turma_id}, disciplina '{disciplina.nome}': "
-                    f"professor {professor_atual} não é habilitado; "
-                    f"substituído por {prof_by_id.get(alt).nome if alt in prof_by_id else alt}."
-                )
-        elif restante(professor_atual) < carga_disc:
-            alt = _pick_best_professor(candidatos, capacidade_por_prof, carga_por_prof, carga_disc)
-            if alt is not None and alt != professor_atual:
-                warnings.append(
-                    "[autoajuste] "
-                    f"Turma {td.turma_id}, disciplina '{disciplina.nome}': "
-                    f"{prof_by_id.get(professor_atual).nome if professor_atual in prof_by_id else professor_atual} "
-                    f"sem capacidade suficiente ({restante(professor_atual)} slots restantes); "
-                    f"substituído por {prof_by_id.get(alt).nome if alt in prof_by_id else alt}."
-                )
-                escolhido = alt
+    qualificados = professores_por_disciplina.get(td.disciplina_id, [])
 
-    carga_por_prof[escolhido] = carga_por_prof.get(escolhido, 0) + carga_disc
-    return escolhido
+    if td.professor_id is not None:
+        if td.professor_id not in qualificados:
+            nome = (
+                prof_by_id.get(td.professor_id).nome
+                if td.professor_id in prof_by_id
+                else f"id={td.professor_id}"
+            )
+            warnings.append(
+                "[atenção] "
+                f"Turma {td.turma_id}, disciplina '{disciplina.nome}': "
+                f"professor {nome} não está habilitado para a disciplina."
+            )
+        return (td.professor_id,)
 
-
-def _pick_best_professor(
-    candidatos: list[int],
-    capacidade_por_prof: dict[int, int],
-    carga_por_prof: dict[int, int],
-    carga_disc: int,
-) -> int | None:
-    with_capacity = [
-        pid
-        for pid in candidatos
-        if (capacidade_por_prof.get(pid, 0) - carga_por_prof.get(pid, 0)) >= carga_disc
-    ]
-    pool = with_capacity if with_capacity else candidatos
-    if not pool:
-        return None
-    return max(pool, key=lambda pid: capacidade_por_prof.get(pid, 0) - carga_por_prof.get(pid, 0))
+    candidatos = tuple(qualificados)
+    if not candidatos:
+        raise InstanceConfigurationError(
+            f"Nenhum professor habilitado para a disciplina '{disciplina.nome}' "
+            f"(turma {td.turma_id}). Cadastre ao menos um professor habilitado "
+            "ou fixe um professor neste item do currículo."
+        )
+    return candidatos

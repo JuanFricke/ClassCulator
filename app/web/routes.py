@@ -11,6 +11,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, select
 
+from app.core.auth import LayoutDep
 from app.core.deps import SessionDep
 from app.core.ensino import infer_turma_ensino
 from app.models import (
@@ -105,15 +106,19 @@ def render(request: Request, template_name: str, /, **context: Any) -> HTMLRespo
 
 
 @router.get("/", response_class=HTMLResponse)
-async def home(request: Request, session: SessionDep):
-    counts = await _contar_entidades(session)
+async def home(request: Request, session: SessionDep, layout: LayoutDep):
+    ano_id = layout["ano_atual"].id
+    counts = await _contar_entidades(session, ano_id)
     ultima = (
         await session.execute(
-            select(GradeHoraria).order_by(GradeHoraria.criado_em.desc()).limit(1)
+            select(GradeHoraria)
+            .where(GradeHoraria.ano_letivo_id == ano_id)
+            .order_by(GradeHoraria.criado_em.desc())
+            .limit(1)
         )
     ).scalar_one_or_none()
 
-    readiness = await _calcular_prontidao(session, counts)
+    readiness = await _calcular_prontidao(session, counts, ano_id)
 
     return render(
         request,
@@ -123,55 +128,82 @@ async def home(request: Request, session: SessionDep):
         ultima=ultima,
         readiness=readiness,
         slots_por_turma=SLOTS_POR_TURMA,  # valor de referência (caso retangular)
+        **layout,
     )
 
 
 @router.get("/onboarding", response_class=HTMLResponse)
-async def onboarding(request: Request, session: SessionDep):
-    counts = await _contar_entidades(session)
-    readiness = await _calcular_prontidao(session, counts)
+async def onboarding(request: Request, session: SessionDep, layout: LayoutDep):
+    ano_id = layout["ano_atual"].id
+    counts = await _contar_entidades(session, ano_id)
+    readiness = await _calcular_prontidao(session, counts, ano_id)
     return render(
         request,
         "onboarding.html",
         active="onboarding",
         counts=counts,
         readiness=readiness,
+        **layout,
     )
 
 
 @router.get("/gestao", response_class=HTMLResponse)
-async def gestao(request: Request, session: SessionDep):
-    counts = await _contar_entidades(session)
-    readiness = await _calcular_prontidao(session, counts)
+async def gestao(request: Request, session: SessionDep, layout: LayoutDep):
+    ano_id = layout["ano_atual"].id
+    counts = await _contar_entidades(session, ano_id)
+    readiness = await _calcular_prontidao(session, counts, ano_id)
     return render(
         request,
         "gestao.html",
         active="gestao",
         counts=counts,
         readiness=readiness,
+        **layout,
     )
 
 
-async def _contar_entidades(session: SessionDep) -> dict[str, int]:
+async def _contar_entidades(session: SessionDep, ano_id: int) -> dict[str, int]:
     return {
         "professores": (
-            await session.execute(select(func.count()).select_from(Professor))
+            await session.execute(
+                select(func.count()).select_from(Professor).where(Professor.ano_letivo_id == ano_id)
+            )
         ).scalar_one(),
-        "turmas": (await session.execute(select(func.count()).select_from(Turma))).scalar_one(),
+        "turmas": (
+            await session.execute(
+                select(func.count()).select_from(Turma).where(Turma.ano_letivo_id == ano_id)
+            )
+        ).scalar_one(),
         "disciplinas": (
-            await session.execute(select(func.count()).select_from(Disciplina))
+            await session.execute(
+                select(func.count())
+                .select_from(Disciplina)
+                .where(Disciplina.ano_letivo_id == ano_id)
+            )
         ).scalar_one(),
-        "salas": (await session.execute(select(func.count()).select_from(Sala))).scalar_one(),
+        "salas": (
+            await session.execute(
+                select(func.count()).select_from(Sala).where(Sala.ano_letivo_id == ano_id)
+            )
+        ).scalar_one(),
         "grades": (
-            await session.execute(select(func.count()).select_from(GradeHoraria))
+            await session.execute(
+                select(func.count())
+                .select_from(GradeHoraria)
+                .where(GradeHoraria.ano_letivo_id == ano_id)
+            )
         ).scalar_one(),
     }
 
 
 async def _mapa_professores_por_disciplina(
-    session: SessionDep, disciplina_ids: list[int] | None = None
+    session: SessionDep, ano_id: int, disciplina_ids: list[int] | None = None
 ) -> dict[int, list[int]]:
-    stmt = select(ProfessorDisciplina.disciplina_id, ProfessorDisciplina.professor_id)
+    stmt = (
+        select(ProfessorDisciplina.disciplina_id, ProfessorDisciplina.professor_id)
+        .join(Professor, Professor.id == ProfessorDisciplina.professor_id)
+        .where(Professor.ano_letivo_id == ano_id)
+    )
     if disciplina_ids:
         stmt = stmt.where(ProfessorDisciplina.disciplina_id.in_(disciplina_ids))
     rows = (await session.execute(stmt)).all()
@@ -181,7 +213,7 @@ async def _mapa_professores_por_disciplina(
     return mapa
 
 
-async def _calcular_prontidao(session: SessionDep, counts: dict) -> dict:
+async def _calcular_prontidao(session: SessionDep, counts: dict, ano_id: int) -> dict:
     """Resume o estado da configuração para o painel inicial.
 
     Retorna uma estrutura com flags por etapa e, se houver turmas, a carga
@@ -201,6 +233,7 @@ async def _calcular_prontidao(session: SessionDep, counts: dict) -> dict:
             )
             .join(TurmaDisciplina, TurmaDisciplina.turma_id == Turma.id, isouter=True)
             .join(Disciplina, Disciplina.id == TurmaDisciplina.disciplina_id, isouter=True)
+            .where(Turma.ano_letivo_id == ano_id)
             .group_by(Turma.id, Turma.identificador, Turma.slots_por_dia)
             .order_by(Turma.identificador)
         )
@@ -290,12 +323,28 @@ def _detalhe_turmas(qtd_turmas: int, problemas: list[dict]) -> str:
 
 
 @router.get("/professores", response_class=HTMLResponse)
-async def professores_list(request: Request, session: SessionDep):
-    profs = (await session.execute(select(Professor).order_by(Professor.nome))).scalars().all()
-    pd_rows = (await session.execute(select(ProfessorDisciplina))).scalars().all()
+async def professores_list(request: Request, session: SessionDep, layout: LayoutDep):
+    ano_id = layout["ano_atual"].id
+    profs = (
+        await session.execute(
+            select(Professor).where(Professor.ano_letivo_id == ano_id).order_by(Professor.nome)
+        )
+    ).scalars().all()
     discs = {
-        d.id: d for d in (await session.execute(select(Disciplina))).scalars().all()
+        d.id: d
+        for d in (
+            await session.execute(
+                select(Disciplina).where(Disciplina.ano_letivo_id == ano_id)
+            )
+        ).scalars().all()
     }
+    pd_rows = (
+        await session.execute(
+            select(ProfessorDisciplina)
+            .join(Professor, Professor.id == ProfessorDisciplina.professor_id)
+            .where(Professor.ano_letivo_id == ano_id)
+        )
+    ).scalars().all()
     by_prof: dict[int, list[Disciplina]] = {}
     for pd in pd_rows:
         if pd.disciplina_id in discs:
@@ -306,13 +355,19 @@ async def professores_list(request: Request, session: SessionDep):
         active="professores",
         professores=profs,
         disciplinas_por_prof=by_prof,
+        **layout,
     )
 
 
 @router.get("/professores/novo", response_class=HTMLResponse)
-async def professor_novo(request: Request, session: SessionDep):
+async def professor_novo(request: Request, session: SessionDep, layout: LayoutDep):
+    ano_id = layout["ano_atual"].id
     discs = (
-        await session.execute(select(Disciplina).order_by(Disciplina.ensino, Disciplina.nome))
+        await session.execute(
+            select(Disciplina)
+            .where(Disciplina.ano_letivo_id == ano_id)
+            .order_by(Disciplina.ensino, Disciplina.nome)
+        )
     ).scalars().all()
     return render(
         request,
@@ -321,16 +376,24 @@ async def professor_novo(request: Request, session: SessionDep):
         professor=None,
         disciplinas=discs,
         disciplina_ids=[],
+        **layout,
     )
 
 
 @router.get("/professores/{professor_id}", response_class=HTMLResponse)
-async def professor_edit(professor_id: int, request: Request, session: SessionDep):
+async def professor_edit(
+    professor_id: int, request: Request, session: SessionDep, layout: LayoutDep
+):
+    ano_id = layout["ano_atual"].id
     prof = await session.get(Professor, professor_id)
-    if prof is None:
+    if prof is None or prof.ano_letivo_id != ano_id:
         raise HTTPException(status_code=404, detail="Professor não encontrado")
     discs = (
-        await session.execute(select(Disciplina).order_by(Disciplina.ensino, Disciplina.nome))
+        await session.execute(
+            select(Disciplina)
+            .where(Disciplina.ano_letivo_id == ano_id)
+            .order_by(Disciplina.ensino, Disciplina.nome)
+        )
     ).scalars().all()
     pd_rows = (
         await session.execute(
@@ -356,6 +419,7 @@ async def professor_edit(professor_id: int, request: Request, session: SessionDe
         disciplinas=discs,
         disciplina_ids=selecionadas,
         disponibilidade=indisp,
+        **layout,
     )
 
 
@@ -363,30 +427,43 @@ async def professor_edit(professor_id: int, request: Request, session: SessionDe
 
 
 @router.get("/disciplinas", response_class=HTMLResponse)
-async def disciplinas_list(request: Request, session: SessionDep):
+async def disciplinas_list(request: Request, session: SessionDep, layout: LayoutDep):
+    ano_id = layout["ano_atual"].id
     disciplinas = (
-        await session.execute(select(Disciplina).order_by(Disciplina.ensino, Disciplina.nome))
+        await session.execute(
+            select(Disciplina)
+            .where(Disciplina.ano_letivo_id == ano_id)
+            .order_by(Disciplina.ensino, Disciplina.nome)
+        )
     ).scalars().all()
     return render(
-        request, "disciplinas/list.html", active="disciplinas", disciplinas=disciplinas
+        request,
+        "disciplinas/list.html",
+        active="disciplinas",
+        disciplinas=disciplinas,
+        **layout,
     )
 
 
 @router.get("/disciplinas/novo", response_class=HTMLResponse)
-async def disciplina_novo(request: Request):
+async def disciplina_novo(request: Request, layout: LayoutDep):
     return render(
         request,
         "disciplinas/form.html",
         active="disciplinas",
         disciplina=None,
         ensino_options=["fundamental", "medio", "ambos"],
+        **layout,
     )
 
 
 @router.get("/disciplinas/{disciplina_id}", response_class=HTMLResponse)
-async def disciplina_edit(disciplina_id: int, request: Request, session: SessionDep):
+async def disciplina_edit(
+    disciplina_id: int, request: Request, session: SessionDep, layout: LayoutDep
+):
+    ano_id = layout["ano_atual"].id
     disc = await session.get(Disciplina, disciplina_id)
-    if disc is None:
+    if disc is None or disc.ano_letivo_id != ano_id:
         raise HTTPException(status_code=404, detail="Disciplina não encontrada")
     return render(
         request,
@@ -394,6 +471,7 @@ async def disciplina_edit(disciplina_id: int, request: Request, session: Session
         active="disciplinas",
         disciplina=disc,
         ensino_options=["fundamental", "medio", "ambos"],
+        **layout,
     )
 
 
@@ -401,31 +479,40 @@ async def disciplina_edit(disciplina_id: int, request: Request, session: Session
 
 
 @router.get("/salas", response_class=HTMLResponse)
-async def salas_list(request: Request, session: SessionDep):
-    salas = (await session.execute(select(Sala).order_by(Sala.nome))).scalars().all()
-    return render(request, "salas/list.html", active="salas", salas=salas)
+async def salas_list(request: Request, session: SessionDep, layout: LayoutDep):
+    ano_id = layout["ano_atual"].id
+    salas = (
+        await session.execute(
+            select(Sala).where(Sala.ano_letivo_id == ano_id).order_by(Sala.nome)
+        )
+    ).scalars().all()
+    return render(request, "salas/list.html", active="salas", salas=salas, **layout)
 
 
 @router.get("/salas/novo", response_class=HTMLResponse)
-async def sala_novo(request: Request):
-    return render(request, "salas/form.html", active="salas", sala=None)
+async def sala_novo(request: Request, layout: LayoutDep):
+    return render(request, "salas/form.html", active="salas", sala=None, **layout)
 
 
 @router.get("/salas/{sala_id}", response_class=HTMLResponse)
-async def sala_edit(sala_id: int, request: Request, session: SessionDep):
+async def sala_edit(sala_id: int, request: Request, session: SessionDep, layout: LayoutDep):
+    ano_id = layout["ano_atual"].id
     sala = await session.get(Sala, sala_id)
-    if sala is None:
+    if sala is None or sala.ano_letivo_id != ano_id:
         raise HTTPException(status_code=404, detail="Sala não encontrada")
-    return render(request, "salas/form.html", active="salas", sala=sala)
+    return render(request, "salas/form.html", active="salas", sala=sala, **layout)
 
 
 # --- Turmas ---------------------------------------------------------------- #
 
 
 @router.get("/turmas", response_class=HTMLResponse)
-async def turmas_list(request: Request, session: SessionDep):
+async def turmas_list(request: Request, session: SessionDep, layout: LayoutDep):
+    ano_id = layout["ano_atual"].id
     turmas = (
-        await session.execute(select(Turma).order_by(Turma.identificador))
+        await session.execute(
+            select(Turma).where(Turma.ano_letivo_id == ano_id).order_by(Turma.identificador)
+        )
     ).scalars().all()
     cargas = await session.execute(
         select(
@@ -434,6 +521,7 @@ async def turmas_list(request: Request, session: SessionDep):
         )
         .join(TurmaDisciplina, TurmaDisciplina.turma_id == Turma.id, isouter=True)
         .join(Disciplina, Disciplina.id == TurmaDisciplina.disciplina_id, isouter=True)
+        .where(Turma.ano_letivo_id == ano_id)
         .group_by(Turma.id)
     )
     carga_por_turma = {row.id: int(row.carga) for row in cargas}
@@ -446,24 +534,31 @@ async def turmas_list(request: Request, session: SessionDep):
         carga_por_turma=carga_por_turma,
         alvo_por_turma=alvo_por_turma,
         carga_alvo=SLOTS_POR_TURMA,  # mantido como fallback para o caso retangular
+        **layout,
     )
 
 
 @router.get("/turmas/novo", response_class=HTMLResponse)
-async def turma_novo(request: Request, session: SessionDep):
+async def turma_novo(request: Request, session: SessionDep, layout: LayoutDep):
+    ano_id = layout["ano_atual"].id
     ensino_default = "fundamental"
     discs = (
         await session.execute(
             select(Disciplina)
-            .where(Disciplina.ensino.in_([ensino_default, "ambos"]))
+            .where(
+                Disciplina.ano_letivo_id == ano_id,
+                Disciplina.ensino.in_([ensino_default, "ambos"]),
+            )
             .order_by(Disciplina.nome)
         )
     ).scalars().all()
     profs = (
-        await session.execute(select(Professor).order_by(Professor.nome))
+        await session.execute(
+            select(Professor).where(Professor.ano_letivo_id == ano_id).order_by(Professor.nome)
+        )
     ).scalars().all()
     professores_por_disciplina = await _mapa_professores_por_disciplina(
-        session, [d.id for d in discs]
+        session, ano_id, [d.id for d in discs]
     )
     return render(
         request,
@@ -478,19 +573,24 @@ async def turma_novo(request: Request, session: SessionDep):
         slots_por_dia=list(SLOTS_POR_DIA_DEFAULT),
         professores_por_disciplina=professores_por_disciplina,
         ensino_options=["fundamental", "medio", "ambos"],
+        **layout,
     )
 
 
 @router.get("/turmas/{turma_id}", response_class=HTMLResponse)
-async def turma_edit(turma_id: int, request: Request, session: SessionDep):
+async def turma_edit(turma_id: int, request: Request, session: SessionDep, layout: LayoutDep):
+    ano_id = layout["ano_atual"].id
     turma = await session.get(Turma, turma_id)
-    if turma is None:
+    if turma is None or turma.ano_letivo_id != ano_id:
         raise HTTPException(status_code=404, detail="Turma não encontrada")
     ensino_turma = infer_turma_ensino(turma.identificador, turma.ensino)
     discs_all = (
         await session.execute(
             select(Disciplina)
-            .where(Disciplina.ensino.in_([ensino_turma, "ambos"]))
+            .where(
+                Disciplina.ano_letivo_id == ano_id,
+                Disciplina.ensino.in_([ensino_turma, "ambos"]),
+            )
             .order_by(Disciplina.nome)
         )
     ).scalars().all()
@@ -511,10 +611,12 @@ async def turma_edit(turma_id: int, request: Request, session: SessionDep):
     extras = [d for d in discs_all if d.id in ids_curriculo and d not in filtradas]
     discs = sorted(filtradas + extras, key=lambda d: d.nome)
     profs = (
-        await session.execute(select(Professor).order_by(Professor.nome))
+        await session.execute(
+            select(Professor).where(Professor.ano_letivo_id == ano_id).order_by(Professor.nome)
+        )
     ).scalars().all()
     professores_por_disciplina = await _mapa_professores_por_disciplina(
-        session, [d.id for d in discs]
+        session, ano_id, [d.id for d in discs]
     )
     disc_by_id = {d.id: d for d in discs}
     carga_atual = sum(
@@ -536,6 +638,7 @@ async def turma_edit(turma_id: int, request: Request, session: SessionDep):
         slots_por_dia=slots_por_dia,
         professores_por_disciplina=professores_por_disciplina,
         ensino_options=["fundamental", "medio", "ambos"],
+        **layout,
     )
 
 
@@ -543,43 +646,41 @@ async def turma_edit(turma_id: int, request: Request, session: SessionDep):
 
 
 @router.get("/grade", response_class=HTMLResponse)
-async def grade_list(request: Request, session: SessionDep):
+async def grade_list(request: Request, session: SessionDep, layout: LayoutDep):
+    ano_id = layout["ano_atual"].id
     grades = (
-        await session.execute(select(GradeHoraria).order_by(GradeHoraria.criado_em.desc()).limit(50))
+        await session.execute(
+            select(GradeHoraria)
+            .where(GradeHoraria.ano_letivo_id == ano_id)
+            .order_by(GradeHoraria.criado_em.desc())
+            .limit(50)
+        )
     ).scalars().all()
-    return render(request, "grade/list.html", active="grade", grades=grades)
+    return render(request, "grade/list.html", active="grade", grades=grades, **layout)
 
 
 @router.get("/grade/nova", response_class=HTMLResponse)
-async def grade_nova(request: Request, session: SessionDep):
-    semestres = (
-        await session.execute(select(Turma.semestre).distinct().order_by(Turma.semestre))
-    ).all()
-    semestres_list = [s[0] for s in semestres] or ["2026/1"]
-
+async def grade_nova(request: Request, session: SessionDep, layout: LayoutDep):
+    ano_id = layout["ano_atual"].id
     # Pré-checagem: avisar antes de submeter se algum currículo está incompleto.
-    counts = {
-        "professores": (await session.execute(select(func.count()).select_from(Professor))).scalar_one(),
-        "turmas": (await session.execute(select(func.count()).select_from(Turma))).scalar_one(),
-        "disciplinas": (await session.execute(select(func.count()).select_from(Disciplina))).scalar_one(),
-        "salas": (await session.execute(select(func.count()).select_from(Sala))).scalar_one(),
-        "grades": 0,
-    }
-    readiness = await _calcular_prontidao(session, counts)
+    counts = await _contar_entidades(session, ano_id)
+    counts["grades"] = 0
+    readiness = await _calcular_prontidao(session, counts, ano_id)
 
     return render(
         request,
         "grade/nova.html",
         active="grade",
-        semestres=semestres_list,
         readiness=readiness,
+        **layout,
     )
 
 
 @router.get("/grade/{grade_id}", response_class=HTMLResponse)
-async def grade_detail(grade_id: int, request: Request, session: SessionDep):
+async def grade_detail(grade_id: int, request: Request, session: SessionDep, layout: LayoutDep):
+    ano_id = layout["ano_atual"].id
     grade = await session.get(GradeHoraria, grade_id)
-    if grade is None:
+    if grade is None or grade.ano_letivo_id != ano_id:
         raise HTTPException(status_code=404, detail="Grade não encontrada")
 
     alocacoes = (
@@ -588,15 +689,29 @@ async def grade_detail(grade_id: int, request: Request, session: SessionDep):
         )
     ).scalars().all()
     turmas = {
-        t.id: t for t in (await session.execute(select(Turma))).scalars().all()
+        t.id: t
+        for t in (
+            await session.execute(select(Turma).where(Turma.ano_letivo_id == ano_id))
+        ).scalars().all()
     }
     discs = {
-        d.id: d for d in (await session.execute(select(Disciplina))).scalars().all()
+        d.id: d
+        for d in (
+            await session.execute(select(Disciplina).where(Disciplina.ano_letivo_id == ano_id))
+        ).scalars().all()
     }
     profs = {
-        p.id: p for p in (await session.execute(select(Professor))).scalars().all()
+        p.id: p
+        for p in (
+            await session.execute(select(Professor).where(Professor.ano_letivo_id == ano_id))
+        ).scalars().all()
     }
-    salas = {s.id: s for s in (await session.execute(select(Sala))).scalars().all()}
+    salas = {
+        s.id: s
+        for s in (
+            await session.execute(select(Sala).where(Sala.ano_letivo_id == ano_id))
+        ).scalars().all()
+    }
 
     grades_por_turma: dict[int, list[list[dict | None]]] = {}
     slots_por_dia_turma: dict[int, list[int]] = {}
@@ -618,7 +733,7 @@ async def grade_detail(grade_id: int, request: Request, session: SessionDep):
         from app.solver.builder import build_instance
 
         try:
-            instance = await build_instance(session, grade.semestre)
+            instance = await build_instance(session, grade.ano_letivo_id)
             assignments = {}
             aulas_lookup: dict[tuple[int, int], list] = {}
             for aula in instance.aulas:
@@ -634,6 +749,13 @@ async def grade_detail(grade_id: int, request: Request, session: SessionDep):
 
     turmas_ordenadas = sorted(turmas.values(), key=lambda t: t.identificador)
 
+    # Dados para o editor manual (dropdowns de disciplina/professor/sala). Só
+    # fazem sentido com a grade concluída; o template os embute como JSON.
+    disciplinas_lista = sorted(discs.values(), key=lambda d: d.nome)
+    professores_lista = sorted(profs.values(), key=lambda p: p.nome)
+    salas_lista = sorted(salas.values(), key=lambda s: s.nome)
+    professores_por_disciplina = await _mapa_professores_por_disciplina(session, ano_id)
+
     return render(
         request,
         "grade/detail.html",
@@ -644,4 +766,9 @@ async def grade_detail(grade_id: int, request: Request, session: SessionDep):
         grades_por_turma=grades_por_turma,
         slots_por_dia_turma=slots_por_dia_turma,
         breakdown=breakdown,
+        disciplinas_lista=disciplinas_lista,
+        professores_lista=professores_lista,
+        salas_lista=salas_lista,
+        professores_por_disciplina=professores_por_disciplina,
+        **layout,
     )

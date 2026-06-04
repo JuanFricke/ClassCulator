@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <defs>
+    <filter id="shadow" x="-4%" y="-8%" width="108%" height="116%">
+      <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#0f172a" flood-opacity="0.15"/>
+    </filter>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f8fafc"/>
+      <stop offset="100%" stop-color="#e2e8f0"/>
+    </linearGradient>
+    <marker id="arrow" markerWidth="14" markerHeight="14" refX="12" refY="7" orient="auto">
+      <path d="M0,0 L14,7 L0,14 z" fill="#475569"/>
+    </marker>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#bg)"/>
+  <rect x="0" y="0" width="1920" height="8" fill="#2563eb"/>
+
+  <text x="960" y="95" text-anchor="middle" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="56" font-weight="700" fill="#0f172a">Deploy</text>
+  <text x="960" y="155" text-anchor="middle" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="36" font-weight="600" fill="#334155">Docker Compose</text>
+
+  <g filter="url(#shadow)">
+    <rect x="100" y="280" width="480" height="340" rx="20" fill="#1e40af" stroke="#1e3a8a" stroke-width="4"/>
+    <text x="340" y="380" text-anchor="middle" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="44" font-weight="700" fill="#ffffff">PostgreSQL</text>
+    <text x="340" y="440" text-anchor="middle" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="36" fill="#bfdbfe">service: db</text>
+    <text x="340" y="495" text-anchor="middle" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="30" fill="#93c5fd">volume pgdata &#183; :5432</text>
+
+    <rect x="720" y="220" width="480" height="260" rx="20" fill="#ea580c" stroke="#c2410c" stroke-width="4"/>
+    <text x="960" y="320" text-anchor="middle" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="44" font-weight="700" fill="#ffffff">migrate</text>
+    <text x="960" y="385" text-anchor="middle" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="32" fill="#ffedd5">alembic upgrade head</text>
+    <text x="960" y="440" text-anchor="middle" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="28" fill="#fed7aa">executa uma vez</text>
+
+    <rect x="1340" y="280" width="480" height="340" rx="20" fill="#2563eb" stroke="#1d4ed8" stroke-width="4"/>
+    <text x="1580" y="380" text-anchor="middle" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="44" font-weight="700" fill="#ffffff">app</text>
+    <text x="1580" y="440" text-anchor="middle" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="36" fill="#dbeafe">uvicorn :8000</text>
+    <text x="1580" y="495" text-anchor="middle" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="30" fill="#93c5fd">FastAPI &#183; hot-reload</text>
+  </g>
+
+  <line x1="580" y1="450" x2="720" y2="350" stroke="#475569" stroke-width="4" marker-end="url(#arrow)"/>
+  <line x1="1200" y1="350" x2="1340" y2="450" stroke="#475569" stroke-width="4" marker-end="url(#arrow)"/>
+
+  <rect x="100" y="700" width="1720" height="320" rx="20" fill="#ffffff" stroke="#cbd5e1" stroke-width="3" filter="url(#shadow)"/>
+  <text x="960" y="780" text-anchor="middle" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="40" font-weight="700" fill="#0f172a">Seeds de dados</text>
+  <text x="960" y="850" text-anchor="middle" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="32" fill="#334155">python -m app.seed &#8594; EFA (grade 5&#215;6)</text>
+  <text x="960" y="910" text-anchor="middle" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="32" fill="#334155">scripts/seed.sh alt &#8594; 23 turmas reais (CP-SAT)</text>
+  <text x="960" y="980" text-anchor="middle" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="30" fill="#64748b">http://localhost:8000</text>
+</svg>

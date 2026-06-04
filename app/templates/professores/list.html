@@ -16,6 +16,33 @@
     Para melhor resultado, vincule disciplinas e atualize disponibilidade semanal de cada professor.
   </div>
 
+  <div class="box">
+    <div class="level is-mobile mb-2">
+      <div class="level-left">
+        <div>
+          <h3 class="title is-6 mb-1">{{ icon("teacher", "mr-1") }} Convidar professor</h3>
+          <p class="help has-text-grey mt-0">
+            Gere um link de convite (uso único) e envie ao professor para ele criar o próprio acesso.
+          </p>
+        </div>
+      </div>
+      <div class="level-right">
+        <button id="btn-gerar-convite" type="button" class="button is-info">
+          {{ icon("wand", "mr-1") }} Gerar e copiar link
+        </button>
+      </div>
+    </div>
+    <div class="field has-addons is-hidden" id="convite-resultado">
+      <div class="control is-expanded">
+        <input id="convite-url" class="input" type="text" readonly onclick="this.select()" />
+      </div>
+      <div class="control">
+        <button id="btn-copiar-convite" type="button" class="button">{{ icon("print", "mr-1") }} Copiar</button>
+      </div>
+    </div>
+    <p id="convite-feedback" class="is-hidden"></p>
+  </div>
+
   {% if professores %}
     <div class="box p-0">
       <div class="table-container">
@@ -66,4 +93,8 @@
   {% else %}
     {{ empty_state("Nenhum professor cadastrado ainda.", "/professores/novo", "Cadastrar o primeiro professor") }}
   {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/convite-link.js?v=1" defer></script>
 {% endblock %}

@@ -45,7 +45,6 @@ form?.addEventListener("submit", async (event) => {
   const payload = {
     identificador: data.get("identificador"),
     ensino: inferEnsinoFromTurma(data.get("identificador")),
-    semestre: data.get("semestre"),
     qtd_alunos: parseInt(data.get("qtd_alunos"), 10),
   };
   if (slotsPorDia) {
@@ -120,26 +119,23 @@ function syncProfessorOptions(row) {
   const allowedProfessorIds = new Set(parseAllowedProfessorIds(disciplinaSelect));
   const options = Array.from(professorSelect.options);
 
-  if (allowedProfessorIds.size === 0) {
-    options.forEach((option) => {
-      option.hidden = true;
-      option.disabled = true;
-    });
-    professorSelect.disabled = true;
-    professorSelect.value = "";
-    return;
-  }
-
+  // A opção "" (Automático / sem preferência) está sempre visível e habilitada.
+  // Só as opções de professor específico são filtradas pelos professores habilitados.
   professorSelect.disabled = false;
   options.forEach((option) => {
+    if (option.value === "") {
+      option.hidden = false;
+      option.disabled = false;
+      return;
+    }
     const isAllowed = allowedProfessorIds.has(option.value);
     option.hidden = !isAllowed;
     option.disabled = !isAllowed;
   });
 
-  if (!allowedProfessorIds.has(professorSelect.value)) {
-    const firstAllowed = options.find((option) => allowedProfessorIds.has(option.value));
-    professorSelect.value = firstAllowed ? firstAllowed.value : "";
+  // Não força troca quando o valor atual é "" (Automático): permanece automático.
+  if (professorSelect.value !== "" && !allowedProfessorIds.has(professorSelect.value)) {
+    professorSelect.value = "";
   }
 }
 
@@ -222,17 +218,17 @@ curriculoForm?.addEventListener("submit", async (event) => {
   const items = Array.from(tableBody.querySelectorAll("tr")).map((tr) => {
     const disciplinaId = parseInt(tr.querySelector("select[name=disciplina_id]").value, 10);
     const professorValue = tr.querySelector("select[name=professor_id]").value;
-    const professorId = parseInt(professorValue, 10);
+    const professorId = professorValue === "" ? null : parseInt(professorValue, 10);
     return {
       disciplina_id: disciplinaId,
       professor_id: professorId,
     };
   });
 
-  if (items.some((item) => Number.isNaN(item.disciplina_id) || Number.isNaN(item.professor_id))) {
+  if (items.some((item) => Number.isNaN(item.disciplina_id))) {
     window.api.feedback(
       curriculoFeedback,
-      "Cada disciplina deve ter um professor habilitado para ela antes de salvar.",
+      "Selecione uma disciplina válida em cada linha antes de salvar.",
       "is-danger",
     );
     return;
