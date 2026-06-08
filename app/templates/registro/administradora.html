@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+
+{% block title %}Cadastro administradora · ClassCulator{% endblock %}
+
+{% block content %}
+<div class="columns is-centered">
+  <div class="column is-one-third-desktop is-half-tablet">
+    <div class="box mt-5">
+      <h1 class="title is-4 has-text-centered">
+        {{ icon("check", "mr-2") }} Conta administradora
+      </h1>
+      <p class="subtitle is-6 has-text-grey has-text-centered mb-4">
+        Crie o acesso da gestora para configurar anos letivos, professores e grades.
+      </p>
+
+      {% if erro %}
+        <div class="notification is-danger is-light" role="alert">{{ erro }}</div>
+      {% endif %}
+
+      <form method="post" action="/registro/administradora">
+        <div class="field">
+          <label class="label" for="nome">Nome</label>
+          <div class="control">
+            <input id="nome" class="input" type="text" name="nome" required autofocus />
+          </div>
+        </div>
+        <div class="field">
+          <label class="label" for="email">E-mail</label>
+          <div class="control">
+            <input id="email" class="input" type="email" name="email" required />
+          </div>
+        </div>
+        <div class="field">
+          <label class="label" for="senha">Senha</label>
+          <div class="control">
+            <input id="senha" class="input" type="password" name="senha" minlength="6" required />
+          </div>
+          <p class="help">Mínimo de 6 caracteres.</p>
+        </div>
+        <div class="field">
+          <label class="label" for="confirmar_senha">Confirmar senha</label>
+          <div class="control">
+            <input id="confirmar_senha" class="input" type="password" name="confirmar_senha" minlength="6" required />
+          </div>
+        </div>
+        <div class="field mt-4">
+          <button type="submit" class="button is-primary is-fullwidth">Criar conta administradora</button>
+        </div>
+      </form>
+    </div>
+    <p class="has-text-centered is-size-7">
+      <a href="/login">Já tenho conta — entrar</a>
+    </p>
+  </div>
+</div>
+{% endblock %}

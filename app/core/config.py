@@ -17,6 +17,10 @@ class Settings(BaseSettings):
     EMPRESA_EMAIL: str = "empresa@classculator.local"
     EMPRESA_SENHA: str = "trocar-esta-senha"
 
+    # Permite /registro/administradora mesmo se já existir conta empresa (substitui).
+    ADMIN_SETUP_ENABLED: bool = False
+    ANO_INICIAL: int = 2026
+
     DATABASE_URL: str = Field(
         default="postgresql+asyncpg://classculator:classculator@db:5432/classculator"
     )

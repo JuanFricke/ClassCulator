@@ -32,6 +32,7 @@ from app.models import (
     Turma,
     Usuario,
 )
+from app.services.admin_setup import cadastro_admin_disponivel, registrar_administradora
 from app.services.ano_service import AnoJaExisteError, criar_ano
 from app.solver.domain import DIAS, SLOTS_DIA_MAX
 from app.web.routes import render
@@ -51,7 +52,13 @@ async def login_form(request: Request, session: SessionDep):
     user = await get_current_user(request, session)
     if user is not None:
         return RedirectResponse(_destino_por_papel(user), status_code=303)
-    return render(request, "login.html", active="login", erro=None)
+    return render(
+        request,
+        "login.html",
+        active="login",
+        erro=None,
+        cadastro_admin_disponivel=await cadastro_admin_disponivel(session),
+    )
 
 
 @router.post("/login")
@@ -70,6 +77,7 @@ async def login_submit(
             "login.html",
             active="login",
             erro="E-mail ou senha inválidos.",
+            cadastro_admin_disponivel=await cadastro_admin_disponivel(session),
         )
     request.session[SESSION_USER_KEY] = user.id
     request.session.pop(SESSION_ANO_KEY, None)
@@ -82,6 +90,51 @@ async def login_submit(
 async def logout(request: Request):
     request.session.clear()
     return RedirectResponse("/login", status_code=303)
+
+
+# --- Cadastro inicial da administradora ----------------------------------- #
+
+
+@router.get("/registro/administradora", response_class=HTMLResponse)
+async def registro_admin_form(request: Request, session: SessionDep):
+    user = await get_current_user(request, session)
+    if user is not None:
+        return RedirectResponse(_destino_por_papel(user), status_code=303)
+    if not await cadastro_admin_disponivel(session):
+        return RedirectResponse("/login", status_code=303)
+    return render(request, "registro/administradora.html", active="registro_admin", erro=None)
+
+
+@router.post("/registro/administradora")
+async def registro_admin_submit(
+    request: Request,
+    session: SessionDep,
+    nome: str = Form(...),
+    email: str = Form(...),
+    senha: str = Form(...),
+    confirmar_senha: str = Form(...),
+):
+    if not await cadastro_admin_disponivel(session):
+        return RedirectResponse("/login", status_code=303)
+
+    def _erro(msg: str) -> HTMLResponse:
+        return render(request, "registro/administradora.html", active="registro_admin", erro=msg)
+
+    if len(senha) < 6:
+        return _erro("A senha deve ter ao menos 6 caracteres.")
+    if senha != confirmar_senha:
+        return _erro("A confirmação não coincide com a senha.")
+
+    try:
+        usuario = await registrar_administradora(
+            session, nome=nome, email=email, senha=senha
+        )
+    except ValueError as exc:
+        return _erro(str(exc))
+
+    request.session[SESSION_USER_KEY] = usuario.id
+    request.session.pop(SESSION_ANO_KEY, None)
+    return RedirectResponse("/anos", status_code=303)
 
 
 # --- Troca obrigatória de senha (primeiro acesso) ----------------------- #
