@@ -1,0 +1,8 @@
+{
+	email {$ACME_EMAIL:admin@sampletester.xyz}
+}
+
+classculator.sampletester.xyz {
+	encode gzip
+	reverse_proxy app:8000
+}
