@@ -1,9 +1,14 @@
 {% extends "base.html" %}
-{% from "_macros.html" import icon, page_header, empty_state %}
+{% from "_macros.html" import icon, page_header, empty_state, breadcrumb_nav %}
 
 {% block title %}Anos letivos · ClassCulator{% endblock %}
 
 {% block content %}
+{{ breadcrumb_nav([
+  {"href": "/", "label": "Painel"},
+  {"label": "Anos letivos"},
+]) }}
+
 {{ page_header("Anos letivos", "calendar", "Cada ano é uma base independente. Ao criar um novo ano, os dados do ano de origem são clonados (mas passam a ser independentes).") }}
 
 {% if erro %}

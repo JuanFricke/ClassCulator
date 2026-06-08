@@ -16,10 +16,10 @@
           Este link de convite é inválido ou já foi utilizado. Solicite um novo link à administração.
         </div>
       {% else %}
+        <p class="subtitle is-6 has-text-grey has-text-centered mb-4">Crie seu acesso para visualizar sua grade.</p>
         {% if erro %}
-          <div class="notification is-danger is-light">{{ erro }}</div>
+          <div class="notification is-danger is-light" role="alert">{{ erro }}</div>
         {% endif %}
-        <p class="subtitle is-6 has-text-grey has-text-centered">Crie seu acesso para visualizar sua grade.</p>
         <form method="post" action="/convite/{{ token }}">
           <div class="field">
             <label class="label" for="nome">Nome completo</label>
@@ -41,7 +41,7 @@
             <p class="help">Mínimo de 6 caracteres.</p>
           </div>
           <div class="field mt-4">
-            <button type="submit" class="button is-success is-fullwidth">Criar acesso</button>
+            <button type="submit" class="button is-primary is-fullwidth">Criar acesso</button>
           </div>
         </form>
       {% endif %}

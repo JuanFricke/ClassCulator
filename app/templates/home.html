@@ -1,80 +1,42 @@
 {% extends "base.html" %}
-{% from "_macros.html" import icon, status_tag, quality, readiness_row %}
+{% from "_macros.html" import icon, status_tag, quality, readiness_row, page_header, entity_link_card %}
+
+{% block title %}Painel · ClassCulator{% endblock %}
 
 {% block content %}
-  <section class="hero is-link mb-4">
-    <div class="hero-body">
-      <div class="columns is-vcentered">
-        <div class="column">
-          <h1 class="title is-2 has-text-white">Organize os dados e gere a grade com segurança</h1>
-          <p class="subtitle is-5 has-text-white-bis">
-            Siga o fluxo guiado para a primeira configuração ou acesse a gestão para manutenção diária.
-          </p>
-        </div>
-        <div class="column is-narrow has-text-right">
-          <a class="button is-large is-light" href="/onboarding">
-            {{ icon("wand", "mr-2") }} Configurar pela primeira vez
-          </a>
-        </div>
-      </div>
-    </div>
-  </section>
+  {{ page_header(
+    "Organize os dados e gere a grade com segurança",
+    "wand",
+    "Siga o fluxo guiado para a primeira configuração ou acesse a gestão para manutenção diária."
+  ) }}
 
-  <div class="columns mb-4">
-    <div class="column is-6">
-      <div class="box">
-        <h2 class="title is-5">{{ icon("wand", "mr-1") }} Primeiro acesso</h2>
-        <p class="has-text-grey mb-3">
-          Ideal para quem está iniciando. O sistema orienta o cadastro na ordem correta e mostra o que falta.
-        </p>
-        <a class="button is-link" href="/onboarding">Abrir configuração guiada</a>
-      </div>
+  <div class="buttons mb-5">
+    <a class="button is-link" href="/onboarding">{{ icon("wand", "mr-1") }} Configuração guiada</a>
+    <a class="button is-light" href="/gestao">{{ icon("check", "mr-1") }} Gerenciar dados</a>
+  </div>
+
+  <div class="columns is-multiline mb-4">
+    <div class="column is-3">
+      {{ entity_link_card("/turmas", "users", "Turmas", counts.turmas, centered=true) }}
     </div>
-    <div class="column is-6">
-      <div class="box">
-        <h2 class="title is-5">{{ icon("check", "mr-1") }} Uso diário</h2>
-        <p class="has-text-grey mb-3">
-          Para manutenção rápida de dados já existentes e ajustes antes de novas gerações.
-        </p>
-        <a class="button is-light" href="/gestao">Abrir painel de gestão</a>
-      </div>
+    <div class="column is-3">
+      {{ entity_link_card("/professores", "teacher", "Professores", counts.professores, centered=true) }}
+    </div>
+    <div class="column is-3">
+      {{ entity_link_card("/disciplinas", "book", "Disciplinas", counts.disciplinas, centered=true) }}
+    </div>
+    <div class="column is-3">
+      {{ entity_link_card("/salas", "door", "Salas", counts.salas, centered=true) }}
     </div>
   </div>
 
-  <div class="columns is-multiline mt-2">
-    <div class="column is-3">
-      <a class="box has-text-centered" href="/turmas">
-        <p class="is-size-7 has-text-grey has-text-weight-semibold">{{ icon("users", "mr-1") }} Turmas</p>
-        <p class="title is-3 mt-2 mb-0">{{ counts.turmas }}</p>
-      </a>
-    </div>
-    <div class="column is-3">
-      <a class="box has-text-centered" href="/professores">
-        <p class="is-size-7 has-text-grey has-text-weight-semibold">{{ icon("teacher", "mr-1") }} Professores</p>
-        <p class="title is-3 mt-2 mb-0">{{ counts.professores }}</p>
-      </a>
-    </div>
-    <div class="column is-3">
-      <a class="box has-text-centered" href="/disciplinas">
-        <p class="is-size-7 has-text-grey has-text-weight-semibold">{{ icon("book", "mr-1") }} Disciplinas</p>
-        <p class="title is-3 mt-2 mb-0">{{ counts.disciplinas }}</p>
-      </a>
-    </div>
-    <div class="column is-3">
-      <a class="box has-text-centered" href="/salas">
-        <p class="is-size-7 has-text-grey has-text-weight-semibold">{{ icon("door", "mr-1") }} Salas</p>
-        <p class="title is-3 mt-2 mb-0">{{ counts.salas }}</p>
-      </a>
-    </div>
-  </div>
-
-  <div class="columns mt-3">
+  <div class="columns">
     <div class="column is-7">
       <div class="box">
         <h2 class="title is-5 mt-0">
           {{ icon("check", "mr-1") }} Checklist para gerar uma grade
         </h2>
-        <p class="has-text-grey mb-3">
+        <p class="subtitle is-6 has-text-grey mb-3">
           Verifique abaixo se tudo está pronto. O currículo de cada turma
           precisa fechar exatamente <strong>sum(slots_por_dia)</strong> aulas
           por semana (no dataset padrão, 30 aulas/semana).
@@ -107,12 +69,12 @@
           {% if ultima.status.value == 'done' %}
             <p class="mb-3">Qualidade: {{ quality(ultima.score_penalidade) }}</p>
           {% endif %}
-          <a class="button is-link is-light" href="/grade/{{ ultima.id }}">
-            Abrir esta grade
-          </a>
-          <a class="button is-text" href="/grade">Ver histórico</a>
+          <div class="buttons">
+            <a class="button is-link is-light" href="/grade/{{ ultima.id }}">Abrir esta grade</a>
+            <a class="button is-light" href="/grade">Ver histórico</a>
+          </div>
         {% else %}
-          <p class="has-text-grey">
+          <p class="has-text-grey mb-0">
             Você ainda não gerou nenhuma grade. Assim que o checklist estiver completo,
             clique em <strong>Gerar grade</strong>.
           </p>
@@ -123,7 +85,7 @@
         <h3 class="title is-6 mt-0">
           {{ icon("info", "mr-1") }} Como funciona?
         </h3>
-        <p class="has-text-grey">
+        <p class="subtitle is-6 has-text-grey mb-0">
           O sistema testa milhares de combinações respeitando o currículo de cada turma,
           a carga de cada disciplina e as preferências de horário dos professores.
           Você pode escolher entre o modo <strong>Otimizado</strong> (mais cuidadoso) e

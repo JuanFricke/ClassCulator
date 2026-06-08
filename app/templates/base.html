@@ -10,7 +10,11 @@
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css"
     />
-    <link rel="stylesheet" href="/static/css/custom.css?v=5" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,300,0,0&icon_names=auto_awesome,calendar_month,check,close,filter_list,group,info,meeting_room,menu_book,person,play_arrow,print,star,warning&display=block"
+    />
+    <link rel="stylesheet" href="/static/css/custom.css?v=8" />
   </head>
   <body>
     <nav class="navbar is-dark" role="navigation" aria-label="main navigation">
@@ -44,22 +48,7 @@
             <a class="navbar-item {% if active == 'gestao' %}is-active has-text-info{% endif %}" href="/gestao">
               {{ icon("check", "mr-1") }} Gerenciar dados
             </a>
-            <a class="navbar-item {% if active == 'turmas' %}is-active has-text-info{% endif %}" href="/turmas">
-              {{ icon("users", "mr-1") }} Turmas
-            </a>
-            <a class="navbar-item {% if active == 'professores' %}is-active has-text-info{% endif %}" href="/professores">
-              {{ icon("teacher", "mr-1") }} Professores
-            </a>
-            <a class="navbar-item {% if active == 'disciplinas' %}is-active has-text-info{% endif %}" href="/disciplinas">
-              {{ icon("book", "mr-1") }} Disciplinas
-            </a>
-            <a class="navbar-item {% if active == 'salas' %}is-active has-text-info{% endif %}" href="/salas">
-              {{ icon("door", "mr-1") }} Salas
-            </a>
-            <a class="navbar-item {% if active == 'grade' %}is-active has-text-info{% endif %}" href="/grade">
-              {{ icon("calendar", "mr-1") }} Grades
-            </a>
-            {% elif current_user and current_user.papel == 'professor' %}
+            {% elif current_user and current_user.papel == 'professor' and not current_user.deve_trocar_senha %}
             <a class="navbar-item {% if active == 'professor' %}is-active has-text-info{% endif %}" href="/professor">
               {{ icon("teacher", "mr-1") }} Meu portal
             </a>
@@ -68,7 +57,7 @@
           <div class="navbar-end">
             {% if current_user and current_user.papel == 'empresa' %}
             <div class="navbar-item">
-              <a class="button is-warning is-light" href="/anos">
+              <a class="button is-warning {% if active != 'anos' %}is-light{% endif %}" href="/anos">
                 {{ icon("calendar", "mr-1") }} Ano: {{ ano_atual.ano if ano_atual else '—' }}
               </a>
             </div>
@@ -109,7 +98,7 @@
 
     <div id="cc-modal-root"></div>
 
-    <script src="/static/js/app.js" defer></script>
+    <script src="/static/js/app.js?v=8" defer></script>
     {% block scripts %}{% endblock %}
   </body>
 </html>

@@ -15,7 +15,7 @@
       </p>
 
       {% if erro %}
-        <div class="notification is-danger is-light">{{ erro }}</div>
+        <div class="notification is-danger is-light" role="alert">{{ erro }}</div>
       {% endif %}
 
       <form method="post" action="/login">
@@ -32,7 +32,7 @@
           </div>
         </div>
         <div class="field mt-4">
-          <button type="submit" class="button is-info is-fullwidth">Entrar</button>
+          <button type="submit" class="button is-primary is-fullwidth">Entrar</button>
         </div>
       </form>
     </div>
