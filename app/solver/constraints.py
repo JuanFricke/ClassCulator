@@ -8,6 +8,11 @@ Soft constraints (com pesos do relatório + extensões do projeto):
 - SC4: 200 × splits entre aulas do mesmo (professor, turma) no dia (alto peso —
   conta cada bloco adicional além do primeiro; obriga o professor que ministra
   múltiplas aulas em uma turma no mesmo dia a fazê-lo em períodos contíguos)
+- SC5: 60 × aulas "isoladas" da mesma (turma, disciplina) sem vizinho imediato no
+  mesmo dia — incentiva blocos de dupla (geminada) quando a disciplina tem 2+
+  aulas semanais. Só se aplica a itens com carga_semanal ≥ 2 (itens com 1 aula
+  semanal são ignorados por ser impossível formar par). Quando a carga é ímpar uma
+  aula inevitavelmente fica isolada; o solver minimiza as demais.
 """
 
 from __future__ import annotations
@@ -25,6 +30,7 @@ PESO_SC1 = 100
 PESO_SC2 = 30
 PESO_SC3 = 50
 PESO_SC4 = 200
+PESO_SC5 = 60  # penaliza aulas sem vizinho imediato de mesma disciplina/turma no dia
 
 
 def violacoes_hard(
@@ -170,9 +176,16 @@ def calcular_score(
     sc2 = _sc2_areas_consecutivas(instance, assignments, by_aula)
     sc3 = _sc3_blocos_teoricos(instance, assignments, by_aula)
     sc4 = _sc4_prof_turma_split(instance, assignments, by_aula, prof_de)
+    sc5 = _sc5_duplas_disciplina(instance, assignments, by_aula)
 
-    score = PESO_SC1 * sc1 + PESO_SC2 * sc2 + PESO_SC3 * sc3 + PESO_SC4 * sc4
-    return score, {"SC1": sc1, "SC2": sc2, "SC3": sc3, "SC4": sc4}
+    score = (
+        PESO_SC1 * sc1
+        + PESO_SC2 * sc2
+        + PESO_SC3 * sc3
+        + PESO_SC4 * sc4
+        + PESO_SC5 * sc5
+    )
+    return score, {"SC1": sc1, "SC2": sc2, "SC3": sc3, "SC4": sc4, "SC5": sc5}
 
 
 def _sc1_janelas_professor(
@@ -290,6 +303,45 @@ def _sc4_prof_turma_split(
     return splits
 
 
+def _sc5_duplas_disciplina(
+    instance: ProblemInstance,
+    assignments: dict[int, tuple[int, int]],
+    by_aula: dict,
+) -> int:
+    """Conta aulas de mesma (turma, disciplina) sem vizinho imediato no mesmo dia.
+
+    Para cada item (turma, disciplina) com ≥ 2 aulas semanais, verifica se cada
+    aula alocada tem outra aula da mesma disciplina no slot imediatamente anterior
+    ou posterior (mesmo dia). Aulas sem esse vizinho são "isoladas" e contribuem
+    uma unidade ao score. Minimizar este valor maximiza blocos de dupla-aula
+    (geminadas). Itens com apenas 1 aula semanal são ignorados (impossível parear).
+    """
+
+    itens: dict[tuple[int, int], list] = {}
+    for a in instance.aulas:
+        itens.setdefault((a.turma_id, a.disciplina_id), []).append(a)
+
+    isoladas = 0
+    for aulas_item in itens.values():
+        if len(aulas_item) < 2:
+            continue
+
+        item_slots: set[tuple[int, int]] = set()
+        for a in aulas_item:
+            if a.idx in assignments:
+                item_slots.add(assignments[a.idx])
+
+        for a in aulas_item:
+            if a.idx not in assignments:
+                continue
+            dia, slot = assignments[a.idx]
+            has_pair = (dia, slot - 1) in item_slots or (dia, slot + 1) in item_slots
+            if not has_pair:
+                isoladas += 1
+
+    return isoladas
+
+
 __all__ = [
     "DIAS",
     "SLOTS_DIA_MAX",
@@ -297,6 +349,7 @@ __all__ = [
     "PESO_SC2",
     "PESO_SC3",
     "PESO_SC4",
+    "PESO_SC5",
     "calcular_score",
     "violacoes_hard",
 ]
