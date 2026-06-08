@@ -1,16 +1,15 @@
 {% extends "base.html" %}
-{% from "_macros.html" import icon, status_tag, solver_label, quality %}
+{% from "_macros.html" import icon, status_tag, solver_label, quality, breadcrumb_nav %}
 
 {% block title %}Grade v{{ grade.versao }} · {{ ano_atual.ano if ano_atual else '' }}{% endblock %}
 
 {% block content %}
-  <nav class="breadcrumb no-print" aria-label="breadcrumbs">
-    <ul>
-      <li><a href="/">Painel</a></li>
-      <li><a href="/grade">Grades</a></li>
-      <li class="is-active"><a href="#" aria-current="page">v{{ grade.versao }} — {{ ano_atual.ano if ano_atual else '' }}</a></li>
-    </ul>
-  </nav>
+  <div id="grade-detail-root" data-grade-id="{{ grade.id }}" data-grade-status="{{ grade.status.value }}" hidden></div>
+  {{ breadcrumb_nav([
+    {"href": "/", "label": "Painel"},
+    {"href": "/grade", "label": "Grades"},
+    {"label": "v" ~ grade.versao ~ " — " ~ (ano_atual.ano if ano_atual else '')},
+  ], "no-print") }}
 
   {% if grade.log and "[autoajuste]" in grade.log %}
     <article class="notification is-warning is-light no-print">
@@ -25,7 +24,7 @@
     <div class="level-left">
       <div>
         <h1 class="title">
-          {{ icon("calendar", "mr-2") }}Grade · {{ ano_atual.ano if ano_atual else '' }}
+          {{ icon("calendar", "mr-2") }} Grade · {{ ano_atual.ano if ano_atual else '' }}
         </h1>
         <p class="subtitle is-6 has-text-grey">
           Versão {{ grade.versao }} · {{ status_tag(grade.status) }}
@@ -34,15 +33,17 @@
     </div>
     <div class="level-right no-print">
       {% if grade.status.value == 'done' %}
-        <button class="button is-light" onclick="window.print()">
-          {{ icon("print", "mr-1") }} Imprimir
-        </button>
-        <button class="button is-warning is-light ml-2" id="grade-edit-toggle" type="button" aria-pressed="false">
-          {{ icon("book", "mr-1") }} Editar manualmente
-        </button>
-        <a class="button is-link is-light ml-2" href="/grade/nova">
-          {{ icon("play", "mr-1") }} Gerar outra
-        </a>
+        <div class="buttons">
+          <button class="button is-light" onclick="window.print()">
+            {{ icon("print", "mr-1") }} Imprimir
+          </button>
+          <button class="button is-warning is-light" id="grade-edit-toggle" type="button" aria-pressed="false">
+            {{ icon("book", "mr-1") }}<span data-edit-toggle-label>Editar manualmente</span>
+          </button>
+          <a class="button is-link is-light" href="/grade/nova">
+            {{ icon("play", "mr-1") }} Gerar outra
+          </a>
+        </div>
       {% endif %}
     </div>
   </div>
@@ -77,11 +78,11 @@
       <div class="column is-4">
         <div class="box">
           <p class="is-size-7 has-text-grey has-text-weight-semibold">Detalhes da otimização</p>
-          <ul class="mt-2" style="list-style: none; padding: 0;">
+          <ul class="list-plain mt-2">
             <li><strong>{{ breakdown.get('SC4', 0) }}</strong> · prof. com a mesma turma em períodos quebrados</li>
-            <li><strong>{{ breakdown.SC1 }}</strong> · janelas vazias do professor no dia</li>
-            <li><strong>{{ breakdown.SC3 }}</strong> · blocos de 3+ aulas teóricas seguidas</li>
-            <li><strong>{{ breakdown.SC2 }}</strong> · disciplinas da mesma área coladas</li>
+            <li><strong>{{ breakdown.get('SC1', 0) }}</strong> · janelas vazias do professor no dia</li>
+            <li><strong>{{ breakdown.get('SC3', 0) }}</strong> · blocos de 3+ aulas teóricas seguidas</li>
+            <li><strong>{{ breakdown.get('SC2', 0) }}</strong> · disciplinas da mesma área coladas</li>
           </ul>
         </div>
       </div>
@@ -107,7 +108,7 @@
       <p class="title is-5 mt-0">
         {{ icon("play", "mr-1") }} A grade está sendo gerada…
       </p>
-      <progress class="progress is-info is-medium" max="100"></progress>
+      <progress class="progress is-info is-medium" max="100" id="grade-status-progress"></progress>
       <p class="has-text-grey">Esta página atualiza automaticamente quando o cálculo terminar.</p>
     </article>
   {% endif %}
@@ -116,7 +117,7 @@
     <div class="box no-print mt-4">
       <div class="field is-horizontal">
         <div class="field-label is-normal">
-          <label class="label" for="turma-filter">{{ icon("filter", "mr-1") }}Visualizar turma:</label>
+          <label class="label" for="turma-filter">{{ icon("filter", "mr-1") }} Visualizar turma</label>
         </div>
         <div class="field-body">
           <div class="field">
@@ -133,13 +134,13 @@
           </div>
         </div>
       </div>
-      <div class="area-legend mt-2">
-        <strong class="mr-2 has-text-grey">Legenda de áreas:</strong>
-        <span><span class="swatch" style="background:#e3f2ff;"></span>Exatas</span>
-        <span><span class="swatch" style="background:#fff3e0;"></span>Humanas</span>
-        <span><span class="swatch" style="background:#e8f5e9;"></span>Biológicas</span>
-        <span><span class="swatch" style="background:#fce4ec;"></span>Linguagens</span>
-        <span><span class="swatch" style="background:#f5f5f5;"></span>Geral</span>
+      <div class="tags are-small mt-2" aria-label="Legenda de áreas">
+        <span class="tag is-light">Legenda:</span>
+        <span class="tag"><span class="area-swatch area-swatch--exatas"></span>Exatas</span>
+        <span class="tag"><span class="area-swatch area-swatch--humanas"></span>Humanas</span>
+        <span class="tag"><span class="area-swatch area-swatch--biologicas"></span>Biológicas</span>
+        <span class="tag"><span class="area-swatch area-swatch--linguagens"></span>Linguagens</span>
+        <span class="tag"><span class="area-swatch area-swatch--geral"></span>Geral</span>
       </div>
     </div>
 
@@ -154,15 +155,15 @@
       {% set max_slot_turma = turma_slots | max %}
       <section class="turma-block mt-5" data-turma-id="turma-{{ turma.id }}">
         <h2 class="title is-4">
-          {{ icon("users", "mr-2") }}Turma {{ turma.identificador }}
+          {{ icon("users", "mr-2") }} Turma {{ turma.identificador }}
         </h2>
         <div class="table-container">
           <table class="table is-bordered is-fullwidth has-text-centered grade-table">
             <thead>
               <tr>
-                <th></th>
+                <th class="has-background-light"></th>
                 {% for dia in DIAS %}
-                  <th>{{ DIAS_LABELS[dia] }}{% if turma_slots[dia] == 0 %} <span class="tag is-light is-small ml-1">sem aula</span>{% endif %}</th>
+                  <th class="has-background-light">{{ DIAS_LABELS[dia] }}{% if turma_slots[dia] == 0 %} <span class="tag is-light is-small ml-1">sem aula</span>{% endif %}</th>
                 {% endfor %}
               </tr>
             </thead>
@@ -170,7 +171,7 @@
               {% for slot in SLOTS %}
                 {% if slot < max_slot_turma %}
                 <tr>
-                  <th class="grade-day" scope="row">{{ SLOT_LABELS[slot] }}</th>
+                  <th class="grade-day has-background-light" scope="row">{{ SLOT_LABELS[slot] }}</th>
                   {% for dia in DIAS %}
                     {% set cell = grades_por_turma[turma.id][dia][slot] %}
                     {% if slot >= turma_slots[dia] %}
@@ -270,7 +271,7 @@
     {% if grade.log %}
       <details class="mt-5 no-print" id="registro-tecnico-geracao">
         <summary class="has-text-grey">Registro técnico da geração</summary>
-        <pre class="mt-2" style="font-size: 0.78rem; max-height: 16rem; overflow: auto;">{{ grade.log }}</pre>
+        <pre class="mt-2 is-size-7 grade-log-pre">{{ grade.log }}</pre>
       </details>
     {% endif %}
   {% endif %}

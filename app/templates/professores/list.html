@@ -1,28 +1,29 @@
 {% extends "base.html" %}
-{% from "_macros.html" import icon, page_header, empty_state %}
+{% from "_macros.html" import icon, page_header, empty_state, breadcrumb_nav %}
 
 {% block title %}Professores · ClassCulator{% endblock %}
 
 {% block content %}
-  <nav class="breadcrumb" aria-label="breadcrumbs">
-    <ul>
-      <li><a href="/">Painel</a></li>
-      <li class="is-active"><a href="#" aria-current="page">Professores</a></li>
-    </ul>
-  </nav>
+  {{ breadcrumb_nav([
+    {"href": "/", "label": "Painel"},
+    {"label": "Professores"},
+  ]) }}
 
-  {{ page_header("Professores", "teacher", "Cadastre docentes e vínculos com disciplinas.", "/professores/novo", "Novo professor") }}
-  <div class="notification is-light">
-    Para melhor resultado, vincule disciplinas e atualize disponibilidade semanal de cada professor.
-  </div>
+  {{ page_header(
+    "Professores",
+    "teacher",
+    "Cadastre docentes, vincule disciplinas e atualize a disponibilidade semanal de cada um.",
+    "/professores/novo",
+    "Novo professor"
+  ) }}
 
-  <div class="box">
-    <div class="level is-mobile mb-2">
+  <div class="box mb-5">
+    <div class="level is-mobile mb-0">
       <div class="level-left">
         <div>
           <h3 class="title is-6 mb-1">{{ icon("teacher", "mr-1") }} Convidar professor</h3>
-          <p class="help has-text-grey mt-0">
-            Gere um link de convite (uso único) e envie ao professor para ele criar o próprio acesso.
+          <p class="help has-text-grey mt-0 mb-0">
+            Gere um link de convite (uso único) para o professor criar o próprio acesso.
           </p>
         </div>
       </div>
@@ -32,15 +33,15 @@
         </button>
       </div>
     </div>
-    <div class="field has-addons is-hidden" id="convite-resultado">
+    <div class="field has-addons is-hidden mt-3 mb-0" id="convite-resultado">
       <div class="control is-expanded">
-        <input id="convite-url" class="input" type="text" readonly onclick="this.select()" />
+        <input id="convite-url" class="input" type="text" readonly onclick="this.select()" aria-label="Link de convite" />
       </div>
       <div class="control">
-        <button id="btn-copiar-convite" type="button" class="button">{{ icon("print", "mr-1") }} Copiar</button>
+        <button id="btn-copiar-convite" type="button" class="button">Copiar</button>
       </div>
     </div>
-    <p id="convite-feedback" class="is-hidden"></p>
+    <p id="convite-feedback" class="help mt-2 mb-0 is-hidden"></p>
   </div>
 
   {% if professores %}
@@ -62,7 +63,7 @@
                 <td class="has-text-grey">{{ p.email or "—" }}</td>
                 <td>
                   {% for d in disciplinas_por_prof.get(p.id, []) %}
-                    <span class="tag is-light mr-1">
+                    <span class="tag is-light mr-1 mb-1">
                       {{ d.nome }}
                       {% if d.ensino == "fundamental" %}
                         (Fund.)
@@ -77,7 +78,6 @@
                   {% endfor %}
                 </td>
                 <td class="has-text-right">
-                  <a class="button is-small is-link is-light" href="/professores/{{ p.id }}">Editar</a>
                   <button
                     class="button is-small is-danger is-light"
                     data-delete-url="/api/v1/professores/{{ p.id }}"

@@ -1,20 +1,18 @@
 {% extends "base.html" %}
-{% from "_macros.html" import icon, page_header, empty_state %}
+{% from "_macros.html" import icon, page_header, empty_state, ensino_tag, breadcrumb_nav %}
 
 {% block title %}Turmas · ClassCulator{% endblock %}
 
 {% block content %}
-  <nav class="breadcrumb" aria-label="breadcrumbs">
-    <ul>
-      <li><a href="/">Painel</a></li>
-      <li class="is-active"><a href="#" aria-current="page">Turmas</a></li>
-    </ul>
-  </nav>
+  {{ breadcrumb_nav([
+    {"href": "/", "label": "Painel"},
+    {"label": "Turmas"},
+  ]) }}
 
   {{ page_header("Turmas", "users", "Gerencie turmas e currículo.", "/turmas/novo", "Nova turma") }}
-  <div class="notification is-link is-light">
-    <strong>Fluxo recomendado:</strong> complete o currículo de cada turma de acordo com seu próprio total de períodos (sum(slots_por_dia)) para liberar a geração sem falhas.
-    <a class="ml-2" href="/onboarding">Abrir configuração guiada</a>
+  <div class="notification is-light">
+    Complete o currículo de cada turma conforme o total de períodos semanais para liberar a geração sem falhas.
+    <a href="/onboarding">Ver fluxo guiado</a>.
   </div>
 
   {% if turmas %}
@@ -34,15 +32,7 @@
             {% for t in turmas %}
               <tr>
                 <td><a href="/turmas/{{ t.id }}"><strong>{{ t.identificador }}</strong></a></td>
-                <td>
-                  {% if t.ensino == "fundamental" %}
-                    <span class="tag is-primary is-light">Fundamental</span>
-                  {% elif t.ensino == "medio" %}
-                    <span class="tag is-link is-light">Médio</span>
-                  {% else %}
-                    <span class="tag is-info is-light">Ambos</span>
-                  {% endif %}
-                </td>
+                <td>{{ ensino_tag(t.ensino) }}</td>
                 <td>{{ t.qtd_alunos }}</td>
                 {% set carga = carga_por_turma.get(t.id, 0) %}
                 {% set alvo = alvo_por_turma.get(t.id, carga_alvo) %}
@@ -58,7 +48,7 @@
                   {% endif %}
                 </td>
                 <td class="has-text-right">
-                  <a class="button is-small is-link is-light" href="/turmas/{{ t.id }}">Editar currículo</a>
+                  <a class="button is-small is-link is-light" href="/turmas/{{ t.id }}">Editar</a>
                   <button
                     class="button is-small is-danger is-light"
                     data-delete-url="/api/v1/turmas/{{ t.id }}"

@@ -1,27 +1,23 @@
 {% extends "base.html" %}
-{% from "_macros.html" import icon, page_header, step_indicator, context_help %}
+{% from "_macros.html" import icon, page_header, step_indicator, context_help, crud_form_actions, breadcrumb_nav %}
 
 {% block title %}{{ sala.nome if sala else "Nova sala" }} · ClassCulator{% endblock %}
 
 {% block content %}
-  <nav class="breadcrumb" aria-label="breadcrumbs">
-    <ul>
-      <li><a href="/">Painel</a></li>
-      <li><a href="/salas">Salas</a></li>
-      <li class="is-active"><a href="#" aria-current="page">
-        {{ sala.nome if sala else "Nova sala" }}
-      </a></li>
-    </ul>
-  </nav>
+  {{ breadcrumb_nav([
+    {"href": "/", "label": "Painel"},
+    {"href": "/salas", "label": "Salas"},
+    {"label": sala.nome if sala else "Nova sala"},
+  ]) }}
 
-  {{ page_header(sala.nome if sala else "Novo ambiente", "door") }}
+  {{ page_header(sala.nome if sala else "Nova sala", "door") }}
   {{ step_indicator(4) }}
   {{ context_help("Etapa 4 de 5", "Cadastre todos os ambientes para permitir alocação correta de aulas práticas e teóricas.") }}
 
   <form
     id="sala-form"
     data-id="{{ sala.id if sala else '' }}"
-    class="cc-card"
+    class="box"
   >
     <div class="field">
       <label class="label" for="sala-nome">Nome</label>
@@ -56,19 +52,7 @@
                value="{{ sala.capacidade if sala else 40 }}" />
       </div>
     </div>
-    <div class="field is-grouped">
-      <div class="control">
-        <button class="button is-link" type="submit">
-          {{ icon("check", "mr-1") }} Salvar
-        </button>
-      </div>
-      <div class="control">
-        <a class="button is-link is-light" href="/grade/nova">Próxima etapa: Revisar e gerar</a>
-      </div>
-      <div class="control">
-        <a class="button" href="/salas">Voltar</a>
-      </div>
-    </div>
+    {{ crud_form_actions("Salvar", "/grade/nova", "Próxima etapa: Revisar e gerar", "/salas") }}
     <div class="notification is-hidden" id="sala-feedback"></div>
   </form>
 {% endblock %}
