@@ -1,103 +1,242 @@
 {% extends "base.html" %}
-{% from "_macros.html" import icon, page_header, empty_state %}
+{% from "_macros.html" import icon, empty_state, disciplinas_picker %}
 
 {% block title %}Meu portal · ClassCulator{% endblock %}
 
 {% block content %}
-{{ page_header("Olá, " ~ professor.nome, "teacher", "Ano letivo " ~ ano_atual.ano) }}
+{% set ok = request.query_params.get('ok') %}
+{% if ok == 'disponibilidade' %}
+  <article class="notification is-success is-light mb-4" role="status">
+    <button class="delete" type="button" aria-label="Fechar" data-notification-dismiss></button>
+    {{ icon("check", "mr-1") }} Disponibilidade salva com sucesso.
+  </article>
+{% elif ok == 'disciplinas' %}
+  <article class="notification is-success is-light mb-4" role="status">
+    <button class="delete" type="button" aria-label="Fechar" data-notification-dismiss></button>
+    {{ icon("check", "mr-1") }} Disciplinas atualizadas com sucesso.
+  </article>
+{% endif %}
 
-<!-- Minha grade -->
-<div class="box">
-  <h2 class="title is-5">{{ icon("calendar", "mr-1") }} Minha grade</h2>
+{# --- Resumo do perfil --- #}
+<div class="box mb-5">
+  <div class="level is-mobile">
+    <div class="level-left">
+      <div class="level-item">
+        <div class="media">
+          <div class="media-left">
+            <span class="icon is-large has-text-info" aria-hidden="true">
+              {{ icon("teacher") }}
+            </span>
+          </div>
+          <div class="media-content">
+            <p class="title is-4 mb-1">{{ professor.nome }}</p>
+            <p class="subtitle is-6 has-text-grey mb-0">
+              Ano letivo <strong>{{ ano_atual.ano }}</strong>
+              {% if professor.email %} · {{ professor.email }}{% endif %}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="level-right">
+      <div class="level-item">
+        <div class="tags are-medium">
+          <span class="tag is-info is-light">
+            {{ minhas_disciplinas|length }} disciplina{{ 's' if minhas_disciplinas|length != 1 else '' }}
+          </span>
+          <span class="tag is-warning is-light">
+            {{ indisponivel|length }} horário{{ 's' if indisponivel|length != 1 else '' }} indisponível{{ 'is' if indisponivel|length != 1 else '' }}
+          </span>
+          {% if grade_cells %}
+            <span class="tag is-success is-light">{{ icon("calendar", "mr-1") }} Grade publicada</span>
+          {% else %}
+            <span class="tag is-light">{{ icon("calendar", "mr-1") }} Grade pendente</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# --- Atalhos entre seções --- #}
+<nav class="buttons is-centered are-small mb-5" aria-label="Ir para seção">
+  <a class="button is-info is-light" href="#sec-grade">{{ icon("calendar", "mr-1") }} Minha grade</a>
+  <a class="button is-warning is-light" href="#sec-disponibilidade">{{ icon("check", "mr-1") }} Disponibilidade</a>
+  <a class="button is-link is-light" href="#sec-disciplinas">{{ icon("book", "mr-1") }} Disciplinas</a>
+</nav>
+
+{# --- Grade horária --- #}
+<section id="sec-grade" class="mb-6" aria-labelledby="prof-grade-heading">
+  <div class="level is-mobile mb-3">
+    <div class="level-left">
+      <div class="level-item">
+        <h2 class="title is-5 mb-0" id="prof-grade-heading">
+          {{ icon("calendar", "mr-1") }} Minha grade
+        </h2>
+      </div>
+    </div>
+    {% if grade_info %}
+      <div class="level-right">
+        <div class="level-item">
+          <span class="tag is-light">Versão {{ grade_info.versao }}</span>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+
   {% if grade_cells %}
+    <div class="box p-0">
+      <div class="table-container">
+        <table class="table is-bordered is-fullwidth is-narrow has-text-centered grade-table mb-0">
+          <thead>
+            <tr>
+              <th scope="col"></th>
+              {% for d in DIAS %}<th scope="col">{{ DIAS_LABELS[d] }}</th>{% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for s in SLOTS %}
+            <tr>
+              <th scope="row" class="grade-day has-text-grey is-size-7">{{ SLOT_LABELS[s] }}</th>
+              {% for d in DIAS %}
+                {% set cell = grade_cells[d][s] %}
+                <td class="grade-cell">
+                  {% if cell %}
+                    <strong>{{ cell.disciplina.nome if cell.disciplina else '—' }}</strong>
+                    <span class="cell-room">
+                      {{ cell.turma.identificador if cell.turma else '' }}{% if cell.sala %} · {{ cell.sala.nome }}{% endif %}
+                    </span>
+                  {% endif %}
+                </td>
+              {% endfor %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <p class="help mt-2">
+      Horários em que você foi alocado na grade mais recente do ano letivo.
+    </p>
+  {% else %}
+    {{ empty_state(
+      "Nenhuma grade concluída neste ano ainda. Quando a administração gerar a grade, seus horários aparecerão aqui."
+    ) }}
+  {% endif %}
+</section>
+
+{# --- Disponibilidade semanal (largura total) --- #}
+<section id="sec-disponibilidade" class="mb-6" aria-labelledby="prof-disp-heading">
+  <h2 class="title is-5 mb-2" id="prof-disp-heading">
+    {{ icon("check", "mr-1") }} Disponibilidade semanal
+  </h2>
+  <form method="post" action="/professor/disponibilidade" id="prof-portal-disp-form" class="box mt-3">
+    <div class="field is-grouped is-grouped-multiline mb-3">
+      <div class="control">
+        <button type="button" class="button is-small is-success is-light" data-disp-action="clear">
+          {{ icon("check", "mr-1") }} Disponível em todos
+        </button>
+      </div>
+      <div class="control">
+        <button type="button" class="button is-small is-danger is-light" data-disp-action="all">
+          {{ icon("cross", "mr-1") }} Indisponível em todos
+        </button>
+      </div>
+    </div>
+
     <div class="table-container">
-      <table class="table is-bordered is-fullwidth is-narrow has-text-centered">
+      <table class="table is-bordered is-narrow is-fullwidth has-text-centered disp-grid mb-0">
         <thead>
           <tr>
-            <th></th>
-            {% for d in DIAS %}<th>{{ DIAS_LABELS[d] }}</th>{% endfor %}
+            <th scope="col"></th>
+            {% for s in SLOTS %}
+              <th scope="col" class="is-size-7">{{ SLOT_LABELS[s] }}</th>
+            {% endfor %}
+            <th scope="col" class="is-size-7">Atalhos</th>
           </tr>
         </thead>
         <tbody>
-          {% for s in SLOTS %}
+          {% for d in DIAS %}
           <tr>
-            <th class="has-text-grey">{{ SLOT_LABELS[s] }}</th>
-            {% for d in DIAS %}
-              {% set cell = grade_cells[d][s] %}
-              <td>
-                {% if cell %}
-                  <strong>{{ cell.disciplina.nome if cell.disciplina else '—' }}</strong><br/>
-                  <small class="has-text-grey">{{ cell.turma.identificador if cell.turma else '' }}{% if cell.sala %} · {{ cell.sala.nome }}{% endif %}</small>
-                {% endif %}
+            <th scope="row" class="has-text-weight-semibold">{{ DIAS_LABELS[d] }}</th>
+            {% for s in SLOTS %}
+              {% set is_ind = (d, s) in indisponivel %}
+              {% set is_avail = not is_ind %}
+              <td class="{% if is_avail %}is-available{% else %}is-unavailable{% endif %}">
+                <input
+                  type="hidden"
+                  name="ind-{{ d }}-{{ s }}"
+                  value="1"
+                  class="disp-ind-input"
+                  {% if is_avail %}disabled{% endif %}
+                />
+                <button
+                  type="button"
+                  class="button is-small disp-toggle {% if is_avail %}is-success{% else %}is-danger{% endif %}"
+                  data-dia="{{ d }}"
+                  data-slot="{{ s }}"
+                  aria-pressed="{{ 'true' if is_avail else 'false' }}"
+                  aria-label="{{ DIAS_LABELS[d] }} {{ SLOT_LABELS[s] }}: {% if is_avail %}disponível{% else %}indisponível{% endif %}"
+                >{% if is_avail %}✓{% else %}✗{% endif %}</button>
               </td>
             {% endfor %}
+            <td class="disp-day-actions">
+              <div class="buttons are-small">
+                <button type="button" class="button is-light" data-disp-day-clear="{{ d }}" title="Disponível o dia inteiro">
+                  ✓ dia
+                </button>
+                <button type="button" class="button is-light" data-disp-day-all="{{ d }}" title="Indisponível o dia inteiro">
+                  ✗ dia
+                </button>
+              </div>
+            </td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
+
+    <div class="field mt-4 mb-0">
+      <div class="control">
+        <button type="submit" class="button is-primary is-fullwidth">
+          {{ icon("check", "mr-1") }} Salvar disponibilidade
+        </button>
+      </div>
+      <p class="help mt-2 mb-0">
+        Suas preferências ajudam a montar a grade sem conflitos de horário.
+      </p>
+    </div>
+  </form>
+</section>
+
+{# --- Disciplinas (abaixo da disponibilidade) --- #}
+<section id="sec-disciplinas" class="mb-6" aria-labelledby="prof-disc-heading">
+  <h2 class="title is-5 mb-2" id="prof-disc-heading">
+    {{ icon("book", "mr-1") }} Disciplinas que leciono
+  </h2>
+  <p class="help mb-3">
+    Marque todas as disciplinas que você está habilitado(a) a ministrar neste ano.
+  </p>
+
+  {% if disciplinas %}
+    <form method="post" action="/professor/disciplinas" id="prof-portal-disc-form" class="box">
+      {{ disciplinas_picker(disciplinas, minhas_disciplinas, root_id="prof-portal-disc-root", show_selected_summary=true) }}
+      <button type="submit" class="button is-primary is-fullwidth mt-4">
+        {{ icon("check", "mr-1") }} Salvar disciplinas
+      </button>
+    </form>
   {% else %}
-    {{ empty_state("Nenhuma grade concluída neste ano ainda. Quando a administração gerar a grade, ela aparecerá aqui.") }}
+    <article class="message is-warning is-light">
+      <div class="message-body">
+        Nenhuma disciplina cadastrada neste ano. Entre em contato com a administração da escola.
+      </div>
+    </article>
   {% endif %}
-</div>
+</section>
+{% endblock %}
 
-<div class="columns">
-  <!-- Disponibilidade -->
-  <div class="column">
-    <div class="box">
-      <h2 class="title is-5">{{ icon("check", "mr-1") }} Minha disponibilidade</h2>
-      <p class="help mb-3">Marque os horários em que você <strong>não</strong> está disponível.</p>
-      <form method="post" action="/professor/disponibilidade">
-        <div class="table-container">
-          <table class="table is-bordered is-narrow is-fullwidth has-text-centered">
-            <thead>
-              <tr>
-                <th></th>
-                {% for d in DIAS %}<th>{{ DIAS_LABELS[d] }}</th>{% endfor %}
-              </tr>
-            </thead>
-            <tbody>
-              {% for s in SLOTS %}
-              <tr>
-                <th class="has-text-grey is-size-7">{{ SLOT_LABELS[s] }}</th>
-                {% for d in DIAS %}
-                  <td>
-                    <input type="checkbox" name="ind-{{ d }}-{{ s }}"
-                           {% if (d, s) in indisponivel %}checked{% endif %} />
-                  </td>
-                {% endfor %}
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-        <button type="submit" class="button is-info">Salvar disponibilidade</button>
-      </form>
-    </div>
-  </div>
-
-  <!-- Disciplinas -->
-  <div class="column">
-    <div class="box">
-      <h2 class="title is-5">{{ icon("book", "mr-1") }} Minhas disciplinas</h2>
-      <p class="help mb-3">Selecione as disciplinas que você pode lecionar.</p>
-      {% if disciplinas %}
-      <form method="post" action="/professor/disciplinas">
-        <div class="content" style="max-height: 320px; overflow-y: auto;">
-          {% for d in disciplinas %}
-          <label class="checkbox is-block mb-2">
-            <input type="checkbox" name="disciplina_ids" value="{{ d.id }}"
-                   {% if d.id in minhas_disciplinas %}checked{% endif %} />
-            {{ d.nome }}
-          </label>
-          {% endfor %}
-        </div>
-        <button type="submit" class="button is-info mt-3">Salvar disciplinas</button>
-      </form>
-      {% else %}
-        <p class="has-text-grey">Nenhuma disciplina cadastrada neste ano.</p>
-      {% endif %}
-    </div>
-  </div>
-</div>
+{% block scripts %}
+  <script src="/static/js/professor-disponibilidade.js?v=9" defer></script>
+  <script src="/static/js/professor-disciplinas-list.js?v=9" defer></script>
+  <script src="/static/js/professor-portal.js?v=9" defer></script>
 {% endblock %}
