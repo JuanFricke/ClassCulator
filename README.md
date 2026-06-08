@@ -28,10 +28,10 @@ git clone <repo> ClassCulator
 cd ClassCulator
 cp .env.example .env
 
-docker compose up                                   # db + migrações + app (hot-reload)
+docker compose -f docker-compose.dev.yml up         # db + migrações + app (hot-reload)
 
 # em outra aba (opcional, popula dados de exemplo)
-docker compose run --rm app python -m app.seed
+docker compose -f docker-compose.dev.yml run --rm app python -m app.seed
 ```
 
 Abra <http://localhost:8000>.
@@ -39,14 +39,14 @@ Abra <http://localhost:8000>.
 ## Comandos úteis
 
 ```bash
-docker compose up                 # sobe tudo
-docker compose down               # para tudo
-docker compose down -v            # para tudo e apaga o volume do Postgres
+docker compose -f docker-compose.dev.yml up      # sobe tudo
+docker compose -f docker-compose.dev.yml down  # para tudo
+docker compose -f docker-compose.dev.yml down -v # para tudo e apaga o volume do Postgres
 
-docker compose run --rm app python -m app.seed
-docker compose run --rm app alembic revision -m "msg" --autogenerate
-docker compose run --rm app alembic upgrade head
-docker compose run --rm app pytest
+docker compose -f docker-compose.dev.yml run --rm app python -m app.seed
+docker compose -f docker-compose.dev.yml run --rm app alembic revision -m "msg" --autogenerate
+docker compose -f docker-compose.dev.yml run --rm app alembic upgrade head
+docker compose -f docker-compose.dev.yml run --rm app pytest
 
 # uso local (opcional, sem Docker):
 uv sync

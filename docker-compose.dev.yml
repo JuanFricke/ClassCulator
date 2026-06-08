@@ -1,6 +1,3 @@
-# Production stack for Hostinger VPS Docker Projects.
-# Deploy via Hostinger API with content URL pointing to this file.
-
 services:
   db:
     image: postgres:15-alpine
@@ -8,10 +5,12 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-classculator}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-classculator}
       POSTGRES_DB: ${POSTGRES_DB:-classculator}
     volumes:
       - pgdata:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
     healthcheck:
       test:
         [
@@ -21,8 +20,6 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
-    networks:
-      - internal
 
   migrate:
     build:
@@ -33,14 +30,15 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    env_file:
+      - .env
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://classculator:classculator@db:5432/classculator}
       SYNC_DATABASE_URL: ${SYNC_DATABASE_URL:-postgresql+psycopg://classculator:classculator@db:5432/classculator}
-      APP_ENV: prod
+    volumes:
+      - .:/app
     command: ["alembic", "upgrade", "head"]
     restart: "no"
-    networks:
-      - internal
 
   app:
     build:
@@ -53,44 +51,29 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+    env_file:
+      - .env
     environment:
-      APP_ENV: ${APP_ENV:-prod}
-      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY is required}
-      EMPRESA_NOME: ${EMPRESA_NOME:-Administração}
-      EMPRESA_EMAIL: ${EMPRESA_EMAIL:?EMPRESA_EMAIL is required}
-      EMPRESA_SENHA: ${EMPRESA_SENHA:?EMPRESA_SENHA is required}
       DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://classculator:classculator@db:5432/classculator}
       SYNC_DATABASE_URL: ${SYNC_DATABASE_URL:-postgresql+psycopg://classculator:classculator@db:5432/classculator}
-      SOLVER_DEFAULT: ${SOLVER_DEFAULT:-cpsat}
-      SOLVER_TIMEOUT_S: ${SOLVER_TIMEOUT_S:-30}
-      HILL_CLIMBING_ITERATIONS: ${HILL_CLIMBING_ITERATIONS:-800}
-    expose:
-      - "8000"
-    restart: unless-stopped
-    networks:
-      - internal
-
-  caddy:
-    image: caddy:2-alpine
-    container_name: classculator-caddy
-    depends_on:
-      - app
+      APP_ENV: ${APP_ENV:-dev}
     ports:
-      - "80:80"
-      - "443:443"
+      - "${APP_PORT:-8000}:8000"
     volumes:
-      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
+      - .:/app
+    command:
+      [
+        "uvicorn",
+        "app.main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8000",
+        "--reload",
+        "--reload-dir",
+        "/app/app",
+      ]
     restart: unless-stopped
-    networks:
-      - internal
-
-networks:
-  internal:
-    driver: bridge
 
 volumes:
   pgdata:
-  caddy_data:
-  caddy_config:

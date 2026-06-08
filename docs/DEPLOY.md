@@ -25,11 +25,13 @@ export HOSTINGER_API_TOKEN="seu-token-aqui"
 
 | Arquivo | Função |
 |---------|--------|
-| [`docker-compose.prod.yaml`](../docker-compose.prod.yaml) | Stack: Postgres, migrate, app, Caddy |
+| [`docker-compose.yml`](../docker-compose.yml) | Stack prod (Hostinger usa este arquivo ao clonar o repo) |
+| [`docker-compose.prod.yaml`](../docker-compose.prod.yaml) | Cópia de referência do stack prod |
+| [`docker-compose.dev.yml`](../docker-compose.dev.yml) | Stack local com hot-reload |
 | [`deploy/Caddyfile`](../deploy/Caddyfile) | HTTPS Let's Encrypt |
 | [`.env.production.example`](../.env.production.example) | Template de variáveis |
 
-Diferenças em relação ao dev (`docker-compose.yml`):
+Diferenças em relação ao dev (`docker-compose.dev.yml`):
 
 - Sem bind mount `.:/app` e sem `--reload`
 - Postgres **não** exposto publicamente
