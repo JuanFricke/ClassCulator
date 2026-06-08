@@ -19,6 +19,7 @@ Modelagem:
 - HC6: para cada turma e dia útil, `sum x >= min(HC6_MIN, slots_dia)`.
 
 Soft constraints expressas como variáveis auxiliares na função objetivo.
+SC5 (acrescentada): preferência por duplas (aulas geminadas) da mesma disciplina/turma.
 """
 
 from __future__ import annotations
@@ -33,6 +34,7 @@ from app.solver.constraints import (
     PESO_SC2,
     PESO_SC3,
     PESO_SC4,
+    PESO_SC5,
     calcular_score,
 )
 from app.solver.diagnostics import necessary_condition_report
@@ -370,5 +372,55 @@ def _build_objective(
             model.Add(splits == sum(blocos) - tem_aula_no_dia)
             model.Add(splits >= 0)
             terms.append(PESO_SC4 * splits)
+
+    # ---- SC5 — preferência por duplas (geminadas) da mesma disciplina/turma ---- #
+    # Penaliza aulas "isoladas": nenhum vizinho imediato (s±1, mesmo dia) pertence
+    # à mesma (turma, disciplina). Peso 60: preferência moderada — nunca impede
+    # uma grade viável; carga ímpar inevitavelmente deixa uma aula isolada (custo
+    # fixo e invariante com qualquer atribuição, logo neutro na otimização).
+    turma_by_id_obj = {t.id: t for t in instance.turmas}
+    itens_sc5: dict[tuple[int, int], list] = {}
+    for a in instance.aulas:
+        itens_sc5.setdefault((a.turma_id, a.disciplina_id), []).append(a)
+
+    for (tid, did), item_aulas in itens_sc5.items():
+        if len(item_aulas) < 2:
+            continue
+        turma = turma_by_id_obj.get(tid)
+        if turma is None:
+            continue
+
+        # consec[(a.idx, b.idx, d, s)] = x[a,d,s] AND x[b,d,s+1]
+        consec: dict[tuple[int, int, int, int], cp_model.IntVar] = {}
+        for a in item_aulas:
+            for b in item_aulas:
+                if a.idx == b.idx:
+                    continue
+                for d in range(DIAS):
+                    slots_dia = turma.slots_por_dia[d] if d < len(turma.slots_por_dia) else 0
+                    for s in range(slots_dia - 1):
+                        if (a.idx, d, s) not in x or (b.idx, d, s + 1) not in x:
+                            continue
+                        c = model.NewBoolVar(f"sc5_c_a{a.idx}_b{b.idx}_d{d}_s{s}")
+                        model.AddBoolAnd([x[(a.idx, d, s)], x[(b.idx, d, s + 1)]]).OnlyEnforceIf(c)
+                        model.AddBoolOr(
+                            [x[(a.idx, d, s)].Not(), x[(b.idx, d, s + 1)].Not()]
+                        ).OnlyEnforceIf(c.Not())
+                        consec[(a.idx, b.idx, d, s)] = c
+
+        for a in item_aulas:
+            # adj = all consec vars where a is left member OR right member of the pair
+            adj: list[cp_model.IntVar] = [
+                cv for (ai, bi, d, s), cv in consec.items()
+                if ai == a.idx or bi == a.idx
+            ]
+            if not adj:
+                continue
+
+            has_pair = model.NewBoolVar(f"sc5_pair_a{a.idx}")
+            model.AddBoolOr(adj).OnlyEnforceIf(has_pair)
+            model.AddBoolAnd([v.Not() for v in adj]).OnlyEnforceIf(has_pair.Not())
+            # Penalize isolated aula (no consecutive sibling)
+            terms.append(PESO_SC5 * has_pair.Not())
 
     return terms
