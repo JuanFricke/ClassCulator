@@ -14,14 +14,15 @@
 })();
 
 (async function autoRefresh() {
-  // Identifica o status mostrado em forma textual (Aguardando / Em andamento).
-  const statusEl = document.querySelector(".subtitle .tag");
-  const label = statusEl?.textContent?.trim() ?? "";
-  if (!/(Aguardando|Em andamento)/i.test(label)) return;
+  const root = document.getElementById("grade-detail-root");
+  const status = root?.dataset.gradeStatus ?? "";
+  if (status !== "pending" && status !== "running") return;
 
-  const path = window.location.pathname.split("/");
-  const id = parseInt(path[path.length - 1], 10);
+  const id = parseInt(root?.dataset.gradeId ?? "", 10);
   if (Number.isNaN(id)) return;
+
+  const progress = document.getElementById("grade-status-progress");
+  progress?.removeAttribute("value");
 
   for (let i = 0; i < 90; i += 1) {
     await new Promise((r) => setTimeout(r, 2000));

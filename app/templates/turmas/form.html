@@ -1,18 +1,14 @@
 {% extends "base.html" %}
-{% from "_macros.html" import icon, page_header, step_indicator, context_help %}
+{% from "_macros.html" import icon, page_header, step_indicator, context_help, breadcrumb_nav, ensino_select, ensino_label, crud_form_actions %}
 
 {% block title %}{{ turma.identificador if turma else "Nova turma" }} · ClassCulator{% endblock %}
 
 {% block content %}
-  <nav class="breadcrumb" aria-label="breadcrumbs">
-    <ul>
-      <li><a href="/">Painel</a></li>
-      <li><a href="/turmas">Turmas</a></li>
-      <li class="is-active"><a href="#" aria-current="page">
-        {{ turma.identificador if turma else "Nova turma" }}
-      </a></li>
-    </ul>
-  </nav>
+  {{ breadcrumb_nav([
+    {"href": "/", "label": "Painel"},
+    {"href": "/turmas", "label": "Turmas"},
+    {"label": turma.identificador if turma else "Nova turma"},
+  ]) }}
 
   {{ page_header(turma.identificador if turma else "Nova turma", "users") }}
   {{ step_indicator(1) }}
@@ -21,7 +17,7 @@
   <form
     id="turma-form"
     data-id="{{ turma.id if turma else '' }}"
-    class="cc-card"
+    class="box"
   >
     <div class="field">
       <label class="label" for="turma-identificador">Identificador da turma</label>
@@ -36,22 +32,8 @@
       <div class="field is-expanded">
         <label class="label" for="turma-ensino">Nível de ensino</label>
         <div class="control">
-          <div class="select is-fullwidth">
-            {% set ensino_atual = turma.ensino if turma else "fundamental" %}
-            <select id="turma-ensino" name="ensino">
-              {% for ensino in ensino_options %}
-                <option value="{{ ensino }}" {% if ensino == ensino_atual %}selected{% endif %}>
-                  {% if ensino == "fundamental" %}
-                    Ensino Fundamental
-                  {% elif ensino == "medio" %}
-                    Ensino Médio
-                  {% else %}
-                    Ambos
-                  {% endif %}
-                </option>
-              {% endfor %}
-            </select>
-          </div>
+          {% set ensino_atual = turma.ensino if turma else "fundamental" %}
+          {{ ensino_select("turma-ensino", "ensino", ensino_atual, ensino_options) }}
         </div>
       </div>
       <div class="field is-expanded">
@@ -99,50 +81,31 @@
       </div>
     </div>
 
-    <div class="field is-grouped">
-      <div class="control">
-        <button class="button is-link" type="submit">
-          {{ icon("check", "mr-1") }} Salvar dados da turma
-        </button>
-      </div>
-      <div class="control">
-        <a class="button is-link is-light" href="/disciplinas/novo">Próxima etapa: Disciplinas</a>
-      </div>
-      <div class="control">
-        <a class="button" href="/turmas">Voltar</a>
-      </div>
-    </div>
+    {{ crud_form_actions("Salvar", "/disciplinas/novo", "Próxima etapa: Disciplinas", "/turmas") }}
     <div class="notification is-hidden" id="turma-feedback"></div>
   </form>
 
   {% if turma %}
-    <h2 class="title is-4 mt-5">
-      {{ icon("book", "mr-2") }}Currículo da turma
-    </h2>
-    <p class="subtitle is-6 has-text-grey">
-      Escolha quais disciplinas a turma terá e o professor responsável por cada uma.
-      Use o botão <strong>+ Adicionar disciplina</strong> para incluir as do
-      nível desta turma até fechar exatamente
-      <strong><span id="carga-alvo-subtitle">{{ carga_alvo }}</span> aulas/semana</strong>.
-    </p>
-    {% if not disciplinas %}
-      <article class="notification is-warning is-light">
-        Nenhuma disciplina cadastrada para o ensino
-        <strong>
-          {% if turma.ensino == "fundamental" %}
-            Fundamental
-          {% elif turma.ensino == "medio" %}
-            Médio
-          {% else %}
-            Ambos
-          {% endif %}
-        </strong>.
-        Cadastre disciplinas desta tag antes de montar o currículo.
-      </article>
-    {% endif %}
+    <section class="mt-5" aria-labelledby="curriculo-heading">
+      <h2 class="title is-5 mb-2" id="curriculo-heading">
+        {{ icon("book", "mr-1") }} Currículo da turma
+      </h2>
+      <p class="help mb-4">
+        Escolha disciplinas e professores até fechar
+        <strong><span id="carga-alvo-subtitle">{{ carga_alvo }}</span> aulas/semana</strong>.
+      </p>
+      {% if not disciplinas %}
+        <article class="message is-warning is-light mb-4">
+          <div class="message-body">
+            Nenhuma disciplina cadastrada para o ensino
+            <strong>{{ ensino_label(turma.ensino) }}</strong>.
+            <a href="/disciplinas/novo">Cadastre disciplinas</a> antes de montar o currículo.
+          </div>
+        </article>
+      {% endif %}
 
-    <form id="curriculo-form" data-turma-id="{{ turma.id }}"
-          data-carga-alvo="{{ carga_alvo }}" class="cc-card">
+      <form id="curriculo-form" data-turma-id="{{ turma.id }}"
+            data-carga-alvo="{{ carga_alvo }}" class="box">
       <div class="mb-4">
         <div class="is-flex is-justify-content-space-between is-align-items-center mb-2">
           <strong>Carga semanal montada</strong>
@@ -254,7 +217,8 @@
         </div>
       </div>
       <div class="notification is-hidden" id="curriculo-feedback"></div>
-    </form>
+      </form>
+    </section>
   {% endif %}
 {% endblock %}
 

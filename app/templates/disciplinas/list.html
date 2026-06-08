@@ -1,20 +1,26 @@
 {% extends "base.html" %}
-{% from "_macros.html" import icon, page_header, empty_state %}
+{% from "_macros.html" import icon, page_header, empty_state, ensino_tag, breadcrumb_nav %}
 
 {% block title %}Disciplinas · ClassCulator{% endblock %}
 
 {% block content %}
-  <nav class="breadcrumb" aria-label="breadcrumbs">
-    <ul>
-      <li><a href="/">Painel</a></li>
-      <li class="is-active"><a href="#" aria-current="page">Disciplinas</a></li>
-    </ul>
-  </nav>
+  {{ breadcrumb_nav([
+    {"href": "/", "label": "Painel"},
+    {"label": "Disciplinas"},
+  ]) }}
 
   {{ page_header("Disciplinas", "book", "Estruture carga semanal, tipo e área de conhecimento.", "/disciplinas/novo", "Nova disciplina") }}
   <div class="notification is-light">
     Mantenha nomes claros e cargas corretas para evitar bloqueios na geração. <a href="/onboarding">Ver fluxo guiado</a>.
   </div>
+
+  {% set area_labels = {
+    "exatas": "Exatas",
+    "humanas": "Humanas",
+    "biologicas": "Biológicas",
+    "linguagens": "Linguagens",
+    "geral": "Geral",
+  } %}
 
   {% if disciplinas %}
     <div class="box p-0">
@@ -34,16 +40,8 @@
             {% for d in disciplinas %}
               <tr>
                 <td><a href="/disciplinas/{{ d.id }}"><strong>{{ d.nome }}</strong></a></td>
-                <td>
-                  {% if d.ensino == "fundamental" %}
-                    <span class="tag is-primary is-light">Fundamental</span>
-                  {% elif d.ensino == "medio" %}
-                    <span class="tag is-link is-light">Médio</span>
-                  {% else %}
-                    <span class="tag is-info is-light">Ambos</span>
-                  {% endif %}
-                </td>
-                <td><span class="tag is-info is-light">{{ d.area }}</span></td>
+                <td>{{ ensino_tag(d.ensino) }}</td>
+                <td><span class="tag is-info is-light">{{ area_labels.get(d.area, d.area) }}</span></td>
                 <td>{{ d.carga_semanal }}</td>
                 <td>
                   {% if d.requer_lab %}
