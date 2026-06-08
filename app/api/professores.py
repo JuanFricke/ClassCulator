@@ -3,7 +3,14 @@ from sqlalchemy import delete, select
 
 from app.core.auth import AnoAtivoApiDep
 from app.core.deps import SessionDep
-from app.models import DisponibilidadeProfessor, Professor, ProfessorDisciplina
+from app.core.security import gerar_senha_temporaria, hash_senha
+from app.models import (
+    PAPEL_PROFESSOR,
+    DisponibilidadeProfessor,
+    Professor,
+    ProfessorDisciplina,
+    Usuario,
+)
 from app.schemas import (
     DisponibilidadeBulkUpdate,
     DisponibilidadeRead,
@@ -22,7 +29,9 @@ async def _get_no_ano(session: SessionDep, professor_id: int, ano_id: int) -> Pr
     return obj
 
 
-async def _serialize(session, professor: Professor) -> ProfessorRead:
+async def _serialize(
+    session, professor: Professor, *, senha_temporaria: str | None = None
+) -> ProfessorRead:
     result = await session.execute(
         select(ProfessorDisciplina.disciplina_id).where(
             ProfessorDisciplina.professor_id == professor.id
@@ -35,6 +44,7 @@ async def _serialize(session, professor: Professor) -> ProfessorRead:
             "nome": professor.nome,
             "email": professor.email,
             "disciplina_ids": disciplina_ids,
+            "senha_temporaria": senha_temporaria,
         }
     )
 
@@ -52,14 +62,46 @@ async def list_professores(session: SessionDep, ano: AnoAtivoApiDep) -> list[Pro
 async def create_professor(
     payload: ProfessorCreate, session: SessionDep, ano: AnoAtivoApiDep
 ) -> ProfessorRead:
-    obj = Professor(ano_letivo_id=ano.id, nome=payload.nome, email=payload.email)
+    nome = payload.nome.strip()
+    email_norm = payload.email.strip().lower() if payload.email and payload.email.strip() else None
+    senha_temporaria: str | None = None
+    usuario_id: int | None = None
+
+    if email_norm:
+        existente = (
+            await session.execute(select(Usuario).where(Usuario.email == email_norm))
+        ).scalar_one_or_none()
+        if existente is not None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Já existe uma conta com este e-mail.",
+            )
+        senha_temporaria = gerar_senha_temporaria()
+        usuario = Usuario(
+            nome=nome,
+            email=email_norm,
+            senha_hash=hash_senha(senha_temporaria),
+            papel=PAPEL_PROFESSOR,
+            ativo=True,
+            deve_trocar_senha=True,
+        )
+        session.add(usuario)
+        await session.flush()
+        usuario_id = usuario.id
+
+    obj = Professor(
+        ano_letivo_id=ano.id,
+        nome=nome,
+        email=email_norm,
+        usuario_id=usuario_id,
+    )
     session.add(obj)
     await session.flush()
     for disc_id in payload.disciplina_ids:
         session.add(ProfessorDisciplina(professor_id=obj.id, disciplina_id=disc_id))
     await session.commit()
     await session.refresh(obj)
-    return await _serialize(session, obj)
+    return await _serialize(session, obj, senha_temporaria=senha_temporaria)
 
 
 @router.get("/{professor_id}", response_model=ProfessorRead)
@@ -128,13 +170,14 @@ async def set_disponibilidade(
         )
     )
     for item in payload.items:
-        session.add(
-            DisponibilidadeProfessor(
-                professor_id=professor_id,
-                dia=item.dia,
-                slot=item.slot,
-                disponivel=item.disponivel,
+        if not item.disponivel:
+            session.add(
+                DisponibilidadeProfessor(
+                    professor_id=professor_id,
+                    dia=item.dia,
+                    slot=item.slot,
+                    disponivel=False,
+                )
             )
-        )
     await session.commit()
     return await get_disponibilidade(professor_id, session, ano)

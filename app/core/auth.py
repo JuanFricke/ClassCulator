@@ -75,11 +75,16 @@ async def require_empresa_web(user: CurrentUserDep) -> Usuario:
     return user
 
 
-async def require_professor_web(user: CurrentUserDep) -> Usuario:
+async def require_professor_web(
+    request: Request,
+    user: CurrentUserDep,
+) -> Usuario:
     if user is None:
         raise RedirectError("/login")
     if user.papel != PAPEL_PROFESSOR:
         raise RedirectError("/anos")
+    if user.deve_trocar_senha and request.url.path not in ("/trocar-senha",):
+        raise RedirectError("/trocar-senha")
     return user
 
 

@@ -13,7 +13,8 @@ class Usuario(Base):
     """Conta de acesso ao sistema.
 
     Existe uma única conta com ``papel='empresa'`` (semeada via env) e contas
-    ``papel='professor'`` criadas via auto-cadastro por link de convite.
+    ``papel='professor'`` criadas pela gestora (senha temporária) ou via
+    auto-cadastro por link de convite.
     """
 
     __tablename__ = "usuarios"
@@ -24,6 +25,7 @@ class Usuario(Base):
     senha_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     papel: Mapped[str] = mapped_column(String(20), nullable=False, default=PAPEL_PROFESSOR)
     ativo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    deve_trocar_senha: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     criado_em: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
