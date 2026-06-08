@@ -1,27 +1,31 @@
 {% extends "base.html" %}
-{% from "_macros.html" import icon, page_header, step_indicator, context_help %}
+{% from "_macros.html" import icon, page_header, step_indicator, context_help, breadcrumb_nav, disciplinas_picker %}
 
 {% block title %}{{ professor.nome if professor else "Novo professor" }} · ClassCulator{% endblock %}
 
 {% block content %}
-  <nav class="breadcrumb" aria-label="breadcrumbs">
-    <ul>
-      <li><a href="/">Painel</a></li>
-      <li><a href="/professores">Professores</a></li>
-      <li class="is-active"><a href="#" aria-current="page">
-        {{ professor.nome if professor else "Novo professor" }}
-      </a></li>
-    </ul>
-  </nav>
+  {{ breadcrumb_nav([
+    {"href": "/", "label": "Painel"},
+    {"href": "/professores", "label": "Professores"},
+    {"label": professor.nome if professor else "Novo professor"},
+  ]) }}
 
   {{ page_header(professor.nome if professor else "Novo professor", "teacher") }}
-  {{ step_indicator(3) }}
-  {{ context_help("Etapa 3 de 5", "Vincule cada professor às disciplinas e registre disponibilidade para reduzir conflitos.") }}
+
+  {% if not professor %}
+    {{ step_indicator(3) }}
+    {{ context_help("Etapa 3 de 5", "Vincule cada professor às disciplinas e registre disponibilidade para reduzir conflitos.") }}
+  {% else %}
+    <nav class="buttons are-small mb-4" aria-label="Ir para seção">
+      <a class="button is-link is-light" href="#prof-disc-heading">{{ icon("book", "mr-1") }} Disciplinas</a>
+      <a class="button is-warning is-light" href="#prof-disp-section">{{ icon("check", "mr-1") }} Disponibilidade</a>
+    </nav>
+  {% endif %}
 
   <form
     id="professor-form"
     data-id="{{ professor.id if professor else '' }}"
-    class="cc-card"
+    class="box"
   >
     <div class="field">
       <label class="label" for="professor-nome">Nome completo</label>
@@ -49,128 +53,147 @@
           value="{{ professor.email if professor and professor.email else '' }}"
         />
       </div>
+      {% if not professor %}
+        <p class="help has-text-grey">
+          Se informado, uma conta de acesso é criada com senha temporária exibida uma única vez após salvar.
+        </p>
+      {% endif %}
     </div>
 
-    <div class="field">
-      <label class="label">Disciplinas que pode lecionar</label>
-      <div class="control">
-        {% if disciplinas %}
-          <div class="checkbox-list">
-            {% for d in disciplinas %}
-              <label class="checkbox mr-3 is-block py-1">
-                <input
-                  type="checkbox"
-                  name="disciplina_ids"
-                  value="{{ d.id }}"
-                  {% if d.id in disciplina_ids %}checked{% endif %}
-                />
-                {{ d.nome }}
-                <span class="tag is-light ml-1">{{ d.area }}</span>
-                {% if d.ensino == "fundamental" %}
-                  <span class="tag is-primary is-light ml-1">Fundamental</span>
-                {% elif d.ensino == "medio" %}
-                  <span class="tag is-link is-light ml-1">Médio</span>
-                {% else %}
-                  <span class="tag is-info is-light ml-1">Ambos</span>
-                {% endif %}
-              </label>
-            {% endfor %}
-          </div>
-        {% else %}
-          <p class="has-text-grey">
+    <section class="mb-5" aria-labelledby="prof-disc-heading">
+      <h2 class="title is-5 mb-2" id="prof-disc-heading">
+        {{ icon("book", "mr-1") }} Disciplinas que pode lecionar
+      </h2>
+      {% if disciplinas %}
+        {{ disciplinas_picker(disciplinas, disciplina_ids, root_id="prof-form-disc-root") }}
+      {% else %}
+        <article class="message is-warning is-light mb-0">
+          <div class="message-body">
             Nenhuma disciplina cadastrada ainda.
             <a href="/disciplinas/novo">Cadastre a primeira</a>.
-          </p>
-        {% endif %}
-      </div>
-    </div>
+          </div>
+        </article>
+      {% endif %}
+    </section>
 
-    <div class="field is-grouped">
+    <div class="field is-grouped" id="professor-form-actions">
       <div class="control">
-        <button class="button is-link" type="submit">
+        <button class="button is-primary" type="submit" id="professor-form-submit">
           {{ icon("check", "mr-1") }} Salvar
         </button>
       </div>
-      <div class="control">
-        <a class="button is-link is-light" href="/salas/novo">Próxima etapa: Salas</a>
-      </div>
+      {% if not professor %}
+        <div class="control">
+          <a class="button is-link is-light" href="/salas/novo">Próxima etapa: Salas</a>
+        </div>
+      {% endif %}
       <div class="control">
         <a class="button" href="/professores">Voltar</a>
       </div>
     </div>
     <div class="notification is-hidden" id="professor-feedback"></div>
+    <div class="notification is-warning is-light is-hidden" id="professor-senha-temp" role="alert">
+      <p class="has-text-weight-semibold mb-2">Conta criada — senha temporária</p>
+      <p class="is-size-7 has-text-grey mb-3">
+        Copie e envie ao professor. Esta senha só aparece agora; no primeiro login ele definirá uma senha pessoal.
+      </p>
+      <div class="field has-addons">
+        <div class="control is-expanded">
+          <input id="professor-senha-temp-valor" class="input is-family-monospace" type="text" readonly onclick="this.select()" aria-label="Senha temporária" />
+        </div>
+        <div class="control">
+          <button type="button" class="button is-warning" id="professor-senha-temp-copiar">
+            Copiar
+          </button>
+        </div>
+      </div>
+      <p class="is-size-7 has-text-success mt-2 mb-0 is-hidden" id="professor-senha-temp-copiado">Senha copiada.</p>
+      <div class="buttons mt-3 mb-0">
+        <button type="button" class="button is-primary" id="professor-senha-temp-continuar">
+          {{ icon("check", "mr-1") }} Continuar para disponibilidade
+        </button>
+      </div>
+    </div>
   </form>
 
   {% if professor %}
-    <h2 class="title is-4 mt-5">
-      {{ icon("calendar", "mr-2") }}Disponibilidade semanal
-    </h2>
-    <p class="subtitle is-6 has-text-grey">
-      Marque (✓) os horários em que o professor <strong>pode</strong> dar aula.
-      Os horários desmarcados serão evitados pelo sistema na hora de montar a grade.
-    </p>
-
-    <form id="disponibilidade-form" data-prof-id="{{ professor.id }}" class="cc-card">
-      <div class="field is-grouped is-grouped-multiline mb-3">
-        <div class="control">
-          <button type="button" class="button is-small is-info is-light" id="disp-all">
-            Todos os horários disponíveis
-          </button>
+    <section id="prof-disp-section" class="mb-6" aria-labelledby="prof-disp-heading">
+      <h2 class="title is-5 mb-2" id="prof-disp-heading">
+        {{ icon("check", "mr-1") }} Disponibilidade semanal
+      </h2>
+      <form method="post" id="disponibilidade-form" data-prof-id="{{ professor.id }}" class="box mt-3">
+        <div class="field is-grouped is-grouped-multiline mb-3">
+          <div class="control">
+            <button type="button" class="button is-small is-success is-light" data-disp-action="clear">
+              {{ icon("check", "mr-1") }} Disponível em todos
+            </button>
+          </div>
+          <div class="control">
+            <button type="button" class="button is-small is-danger is-light" data-disp-action="all">
+              {{ icon("cross", "mr-1") }} Indisponível em todos
+            </button>
+          </div>
         </div>
-        <div class="control">
-          <button type="button" class="button is-small is-warning is-light" id="disp-none">
-            Marcar todos como indisponíveis
-          </button>
-        </div>
-      </div>
 
-      <div class="table-container">
-        <table class="table is-bordered is-narrow has-text-centered disp-grid">
-          <thead>
-            <tr>
-              <th></th>
-              {% for slot in SLOTS %}
-                <th>{{ SLOT_LABELS[slot] }}</th>
-              {% endfor %}
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for dia in DIAS %}
+        <div class="table-container">
+          <table class="table is-bordered is-narrow is-fullwidth has-text-centered disp-grid mb-0">
+            <thead>
               <tr>
-                <th>{{ DIAS_LABELS[dia] }}</th>
+                <th scope="col"></th>
                 {% for slot in SLOTS %}
-                  {% set disp = disponibilidade.get((dia, slot), True) %}
-                  <td class="{% if not disp %}is-unavailable{% endif %}">
-                    <input
-                      type="checkbox"
-                      data-dia="{{ dia }}"
-                      data-slot="{{ slot }}"
-                      {% if disp %}checked{% endif %}
-                    />
-                  </td>
+                  <th scope="col" class="is-size-7">{{ SLOT_LABELS[slot] }}</th>
                 {% endfor %}
-                <td class="disp-day-actions">
-                  <button type="button" class="button is-small is-light"
-                          data-disp-day-on="{{ dia }}" title="Disponível o dia inteiro">✓ todos</button>
-                  <button type="button" class="button is-small is-light"
-                          data-disp-day-off="{{ dia }}" title="Indisponível o dia inteiro">✗ nenhum</button>
-                </td>
+                <th scope="col" class="is-size-7">Atalhos</th>
               </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-      <div class="field mt-3">
-        <button class="button is-link" type="submit">
-          {{ icon("check", "mr-1") }} Salvar disponibilidade
-        </button>
-      </div>
-      <div class="notification is-hidden" id="disp-feedback"></div>
-    </form>
+            </thead>
+            <tbody>
+              {% for dia in DIAS %}
+                <tr>
+                  <th scope="row" class="has-text-weight-semibold">{{ DIAS_LABELS[dia] }}</th>
+                  {% for slot in SLOTS %}
+                    {% set disp = disponibilidade.get((dia, slot), True) %}
+                    <td class="{% if disp %}is-available{% else %}is-unavailable{% endif %}">
+                      <button
+                        type="button"
+                        class="button is-small disp-toggle {% if disp %}is-success{% else %}is-danger{% endif %}"
+                        data-dia="{{ dia }}"
+                        data-slot="{{ slot }}"
+                        aria-pressed="{{ 'true' if disp else 'false' }}"
+                        aria-label="{{ DIAS_LABELS[dia] }} {{ SLOT_LABELS[slot] }}: {% if disp %}disponível{% else %}indisponível{% endif %}"
+                      >{% if disp %}✓{% else %}✗{% endif %}</button>
+                    </td>
+                  {% endfor %}
+                  <td class="disp-day-actions">
+                    <div class="buttons are-small">
+                      <button type="button" class="button is-light" data-disp-day-clear="{{ dia }}" title="Disponível o dia inteiro">
+                        ✓ dia
+                      </button>
+                      <button type="button" class="button is-light" data-disp-day-all="{{ dia }}" title="Indisponível o dia inteiro">
+                        ✗ dia
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="field mt-4 mb-0">
+          <div class="control">
+            <button type="submit" class="button is-primary is-fullwidth">
+              {{ icon("check", "mr-1") }} Salvar disponibilidade
+            </button>
+          </div>
+        </div>
+        <div class="notification is-hidden mt-3 mb-0" id="disp-feedback"></div>
+      </form>
+    </section>
   {% endif %}
 {% endblock %}
 
 {% block scripts %}
-  <script src="/static/js/professor-form.js" defer></script>
+  <script src="/static/js/professor-disponibilidade.js?v=9" defer></script>
+  <script src="/static/js/professor-disciplinas-list.js?v=9" defer></script>
+  <script src="/static/js/professor-form.js?v=9" defer></script>
 {% endblock %}
