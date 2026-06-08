@@ -11,6 +11,7 @@ from app.core.auth import (
     SESSION_USER_KEY,
     EmpresaWebDep,
     ProfessorContextoDep,
+    ProfessorWebDep,
     get_current_user,
 )
 from app.core.deps import SessionDep
@@ -72,6 +73,8 @@ async def login_submit(
         )
     request.session[SESSION_USER_KEY] = user.id
     request.session.pop(SESSION_ANO_KEY, None)
+    if user.deve_trocar_senha:
+        return RedirectResponse("/trocar-senha", status_code=303)
     return RedirectResponse(_destino_por_papel(user), status_code=303)
 
 
@@ -79,6 +82,58 @@ async def login_submit(
 async def logout(request: Request):
     request.session.clear()
     return RedirectResponse("/login", status_code=303)
+
+
+# --- Troca obrigatória de senha (primeiro acesso) ----------------------- #
+
+
+@router.get("/trocar-senha", response_class=HTMLResponse)
+async def trocar_senha_form(request: Request, session: SessionDep, user: ProfessorWebDep):
+    if not user.deve_trocar_senha:
+        return RedirectResponse("/professor", status_code=303)
+    return render(
+        request,
+        "trocar_senha.html",
+        active="trocar_senha",
+        current_user=user,
+        erro=None,
+    )
+
+
+@router.post("/trocar-senha")
+async def trocar_senha_submit(
+    request: Request,
+    session: SessionDep,
+    user: ProfessorWebDep,
+    senha_atual: str = Form(...),
+    nova_senha: str = Form(...),
+    confirmar_senha: str = Form(...),
+):
+    if not user.deve_trocar_senha:
+        return RedirectResponse("/professor", status_code=303)
+
+    def _erro(msg: str) -> HTMLResponse:
+        return render(
+            request,
+            "trocar_senha.html",
+            active="trocar_senha",
+            current_user=user,
+            erro=msg,
+        )
+
+    if not verificar_senha(senha_atual, user.senha_hash):
+        return _erro("Senha atual incorreta.")
+    if len(nova_senha) < 6:
+        return _erro("A nova senha deve ter ao menos 6 caracteres.")
+    if nova_senha != confirmar_senha:
+        return _erro("A confirmação não coincide com a nova senha.")
+    if verificar_senha(nova_senha, user.senha_hash):
+        return _erro("A nova senha deve ser diferente da senha temporária.")
+
+    user.senha_hash = hash_senha(nova_senha)
+    user.deve_trocar_senha = False
+    await session.commit()
+    return RedirectResponse("/professor", status_code=303)
 
 
 # --- Anos letivos --------------------------------------------------------- #
@@ -407,7 +462,7 @@ async def professor_disponibilidade(
             )
         )
     await session.commit()
-    return RedirectResponse("/professor", status_code=303)
+    return RedirectResponse("/professor?ok=disponibilidade", status_code=303)
 
 
 @router.post("/professor/disciplinas")
@@ -441,4 +496,4 @@ async def professor_disciplinas(
     for did in validas:
         session.add(ProfessorDisciplina(professor_id=professor.id, disciplina_id=did))
     await session.commit()
-    return RedirectResponse("/professor", status_code=303)
+    return RedirectResponse("/professor?ok=disciplinas", status_code=303)

@@ -38,3 +38,9 @@ def gerar_token() -> str:
     """Token opaco e URL-safe para links de convite."""
 
     return secrets.token_urlsafe(32)
+
+
+def gerar_senha_temporaria() -> str:
+    """Senha aleatória legível para primeiro acesso (12 caracteres URL-safe)."""
+
+    return secrets.token_urlsafe(9)

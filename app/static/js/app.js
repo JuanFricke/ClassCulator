@@ -1,5 +1,27 @@
 /* Helpers comuns: Fetch, feedback, confirmação customizada. */
 
+function formatApiError(detail) {
+  if (detail == null) return "";
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) {
+    return detail
+      .map((item) => {
+        if (typeof item === "string") return item;
+        if (item && typeof item === "object") {
+          if (item.msg) {
+            const loc = Array.isArray(item.loc) ? item.loc.filter((p) => p !== "body").join(".") : "";
+            return loc ? `${loc}: ${item.msg}` : item.msg;
+          }
+          return JSON.stringify(item);
+        }
+        return String(item);
+      })
+      .join("; ");
+  }
+  if (typeof detail === "object" && detail.msg) return detail.msg;
+  return String(detail);
+}
+
 window.api = {
   async json(url, options = {}) {
     const res = await fetch(url, {
@@ -10,7 +32,7 @@ window.api = {
       const text = await res.text();
       let message = text;
       try {
-        message = JSON.parse(text).detail ?? text;
+        message = formatApiError(JSON.parse(text).detail) || text;
       } catch (_) {}
       throw new Error(message || `HTTP ${res.status}`);
     }
@@ -19,10 +41,7 @@ window.api = {
   },
   feedback(el, message, kind = "is-info") {
     if (!el) return;
-    el.classList.remove(
-      "is-hidden", "is-info", "is-success", "is-danger", "is-warning",
-    );
-    el.classList.add("cc-feedback", kind);
+    el.className = `notification ${kind} is-light`;
     el.textContent = message;
     if (kind === "is-success") {
       setTimeout(() => el.classList.add("is-hidden"), 4000);
@@ -87,8 +106,23 @@ function confirmDialog({ title = "Confirmar", message, confirmLabel = "Confirmar
 }
 window.confirmDialog = confirmDialog;
 
+function initNotificationDismiss() {
+  document.querySelectorAll("[data-notification-dismiss]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      btn.closest(".notification")?.remove();
+      const url = new URL(window.location.href);
+      if (url.searchParams.has("ok")) {
+        url.searchParams.delete("ok");
+        const qs = url.searchParams.toString();
+        window.history.replaceState({}, "", url.pathname + (qs ? `?${qs}` : "") + url.hash);
+      }
+    });
+  });
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   initNavbarBurger();
+  initNotificationDismiss();
 });
 
 document.addEventListener("click", async (event) => {
