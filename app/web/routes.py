@@ -352,7 +352,7 @@ async def professores_list(request: Request, session: SessionDep, layout: Layout
     return render(
         request,
         "professores/list.html",
-        active="professores",
+        active="gestao",
         professores=profs,
         disciplinas_por_prof=by_prof,
         **layout,
@@ -372,7 +372,7 @@ async def professor_novo(request: Request, session: SessionDep, layout: LayoutDe
     return render(
         request,
         "professores/form.html",
-        active="professores",
+        active="gestao",
         professor=None,
         disciplinas=discs,
         disciplina_ids=[],
@@ -414,7 +414,7 @@ async def professor_edit(
     return render(
         request,
         "professores/form.html",
-        active="professores",
+        active="gestao",
         professor=prof,
         disciplinas=discs,
         disciplina_ids=selecionadas,
@@ -439,7 +439,7 @@ async def disciplinas_list(request: Request, session: SessionDep, layout: Layout
     return render(
         request,
         "disciplinas/list.html",
-        active="disciplinas",
+        active="gestao",
         disciplinas=disciplinas,
         **layout,
     )
@@ -450,7 +450,7 @@ async def disciplina_novo(request: Request, layout: LayoutDep):
     return render(
         request,
         "disciplinas/form.html",
-        active="disciplinas",
+        active="gestao",
         disciplina=None,
         ensino_options=["fundamental", "medio", "ambos"],
         **layout,
@@ -468,7 +468,7 @@ async def disciplina_edit(
     return render(
         request,
         "disciplinas/form.html",
-        active="disciplinas",
+        active="gestao",
         disciplina=disc,
         ensino_options=["fundamental", "medio", "ambos"],
         **layout,
@@ -486,12 +486,12 @@ async def salas_list(request: Request, session: SessionDep, layout: LayoutDep):
             select(Sala).where(Sala.ano_letivo_id == ano_id).order_by(Sala.nome)
         )
     ).scalars().all()
-    return render(request, "salas/list.html", active="salas", salas=salas, **layout)
+    return render(request, "salas/list.html", active="gestao", salas=salas, **layout)
 
 
 @router.get("/salas/novo", response_class=HTMLResponse)
 async def sala_novo(request: Request, layout: LayoutDep):
-    return render(request, "salas/form.html", active="salas", sala=None, **layout)
+    return render(request, "salas/form.html", active="gestao", sala=None, **layout)
 
 
 @router.get("/salas/{sala_id}", response_class=HTMLResponse)
@@ -500,7 +500,7 @@ async def sala_edit(sala_id: int, request: Request, session: SessionDep, layout:
     sala = await session.get(Sala, sala_id)
     if sala is None or sala.ano_letivo_id != ano_id:
         raise HTTPException(status_code=404, detail="Sala não encontrada")
-    return render(request, "salas/form.html", active="salas", sala=sala, **layout)
+    return render(request, "salas/form.html", active="gestao", sala=sala, **layout)
 
 
 # --- Turmas ---------------------------------------------------------------- #
@@ -529,7 +529,7 @@ async def turmas_list(request: Request, session: SessionDep, layout: LayoutDep):
     return render(
         request,
         "turmas/list.html",
-        active="turmas",
+        active="gestao",
         turmas=turmas,
         carga_por_turma=carga_por_turma,
         alvo_por_turma=alvo_por_turma,
@@ -563,7 +563,7 @@ async def turma_novo(request: Request, session: SessionDep, layout: LayoutDep):
     return render(
         request,
         "turmas/form.html",
-        active="turmas",
+        active="gestao",
         turma=None,
         disciplinas=discs,
         professores=profs,
@@ -628,7 +628,7 @@ async def turma_edit(turma_id: int, request: Request, session: SessionDep, layou
     return render(
         request,
         "turmas/form.html",
-        active="turmas",
+        active="gestao",
         turma=turma,
         disciplinas=discs,
         professores=profs,
@@ -656,7 +656,7 @@ async def grade_list(request: Request, session: SessionDep, layout: LayoutDep):
             .limit(50)
         )
     ).scalars().all()
-    return render(request, "grade/list.html", active="grade", grades=grades, **layout)
+    return render(request, "grade/list.html", active="gestao", grades=grades, **layout)
 
 
 @router.get("/grade/nova", response_class=HTMLResponse)
@@ -670,7 +670,7 @@ async def grade_nova(request: Request, session: SessionDep, layout: LayoutDep):
     return render(
         request,
         "grade/nova.html",
-        active="grade",
+        active="gestao",
         readiness=readiness,
         **layout,
     )
@@ -759,7 +759,7 @@ async def grade_detail(grade_id: int, request: Request, session: SessionDep, lay
     return render(
         request,
         "grade/detail.html",
-        active="grade",
+        active="gestao",
         grade=grade,
         turmas=turmas,
         turmas_ordenadas=turmas_ordenadas,

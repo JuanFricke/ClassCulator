@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+
+{% block title %}Definir nova senha · ClassCulator{% endblock %}
+
+{% block content %}
+<div class="columns is-centered">
+  <div class="column is-one-third-desktop is-half-tablet">
+    <div class="box mt-5">
+      <h1 class="title is-4 has-text-centered">
+        {{ icon("warning", "mr-2") }} Definir nova senha
+      </h1>
+      <p class="subtitle is-6 has-text-grey has-text-centered">
+        Este é seu primeiro acesso. Escolha uma senha pessoal para continuar.
+      </p>
+
+      {% if erro %}
+        <div class="notification is-danger is-light" role="alert">{{ erro }}</div>
+      {% endif %}
+
+      <form method="post" action="/trocar-senha">
+        <div class="field">
+          <label class="label" for="senha-atual">Senha temporária</label>
+          <div class="control">
+            <input
+              id="senha-atual"
+              class="input"
+              type="password"
+              name="senha_atual"
+              required
+              autofocus
+            />
+          </div>
+          <p class="help">Use a senha enviada pela administração.</p>
+        </div>
+        <div class="field">
+          <label class="label" for="nova-senha">Nova senha</label>
+          <div class="control">
+            <input
+              id="nova-senha"
+              class="input"
+              type="password"
+              name="nova_senha"
+              minlength="6"
+              required
+            />
+          </div>
+        </div>
+        <div class="field">
+          <label class="label" for="confirmar-senha">Confirmar nova senha</label>
+          <div class="control">
+            <input
+              id="confirmar-senha"
+              class="input"
+              type="password"
+              name="confirmar_senha"
+              minlength="6"
+              required
+            />
+          </div>
+        </div>
+        <div class="field mt-4">
+          <button type="submit" class="button is-primary is-fullwidth">
+            {{ icon("check", "mr-1") }} Salvar e continuar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -31,18 +31,28 @@ main {
   border-top: 1px solid var(--cc-border);
 }
 
-.is-hidden {
-  display: none !important;
-}
-
-/* ---------- ícones SVG inline ---------- */
-.cc-icon {
+/* ---------- Material Symbols Light (ligaturas) ---------- */
+.material-symbols-light {
+  font-family: 'Material Symbols Outlined';
+  font-weight: 300;
+  font-style: normal;
+  font-size: 1.05em;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
   display: inline-block;
-  vertical-align: -2px;
-  width: 1.05em;
-  height: 1.05em;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  font-feature-settings: 'liga';
+  -webkit-font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+  font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
 }
-.tag .cc-icon { width: 1em; height: 1em; }
+.cc-icon {
+  vertical-align: -2px;
+}
+.tag .cc-icon { font-size: 1em; }
 
 /* ---------- nav ---------- */
 .navbar.is-dark {
@@ -50,6 +60,38 @@ main {
 }
 .navbar-item.is-active {
   background-color: rgba(255, 255, 255, 0.08);
+}
+
+/* Bulma's .container inside .navbar grows to fit non-shrinking flex children.
+   When the menu is wider than the viewport the centered container overflows
+   equally on both sides — blank bar on the left, items clipped on the right. */
+.navbar > .container {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  margin-inline: auto;
+  padding-inline: 0.75rem;
+  box-sizing: border-box;
+}
+@media screen and (min-width: 1024px) {
+  .navbar-menu {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  .navbar-start,
+  .navbar-end {
+    flex-wrap: wrap;
+    min-width: 0;
+  }
+  .navbar-start .navbar-item,
+  .navbar-end .navbar-item {
+    font-size: 0.875rem;
+    padding-inline: 0.5rem;
+  }
+  .navbar-brand .navbar-item {
+    font-size: 1.125rem;
+    padding-inline: 0;
+  }
 }
 
 /* ---------- fluxo guiado ---------- */
@@ -99,13 +141,10 @@ main {
   color: #fff;
 }
 
-/* ---------- cards ---------- */
-.cc-card {
-  background: #fff;
-  border: 1px solid var(--cc-border);
-  border-radius: 10px;
-  padding: 1.25rem 1.5rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+/* ---------- utilitários mínimos (sem equivalente Bulma) ---------- */
+.cc-scroll-y-18 {
+  max-height: 18rem;
+  overflow-y: auto;
 }
 
 /* ---------- prontidão (checklist da home) ---------- */
@@ -128,18 +167,15 @@ main {
 .readiness-row.is-ok .readiness-icon { background: #effaf3; color: #257953; }
 .readiness-row.is-pending .readiness-icon { background: #fff8db; color: #946c00; }
 
-/* ---------- escolha de modo (cards) ---------- */
+/* ---------- modo otimizado (único card + slider) ---------- */
 .mode-card {
   position: relative;
-  border: 2px solid var(--cc-border);
+  border: 2px solid #3273dc;
   border-radius: 14px;
   padding: 1.5rem 1.5rem 1.35rem;
-  cursor: pointer;
-  transition: border-color 0.18s ease, box-shadow 0.18s ease,
-              transform 0.18s ease, background-color 0.18s ease;
-  background: #fff;
+  background: linear-gradient(180deg, #f6faff 0%, #ffffff 65%);
+  box-shadow: 0 8px 24px rgba(50, 115, 220, 0.12);
   display: block;
-  height: 100%;
   overflow: hidden;
 }
 .mode-card::before {
@@ -147,23 +183,7 @@ main {
   position: absolute;
   inset: 0 0 auto 0;
   height: 4px;
-  background: transparent;
-  transition: background-color 0.18s ease;
-}
-.mode-card:hover {
-  border-color: #c8d4ea;
-  box-shadow: 0 6px 18px rgba(15, 30, 60, 0.06);
-  transform: translateY(-2px);
-}
-.mode-card input[type="radio"] {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
-}
-.mode-card input[type="radio"]:focus-visible + .mode-badge,
-.mode-card:focus-within {
-  outline: 2px solid #3273dc;
-  outline-offset: 3px;
+  background: linear-gradient(90deg, #3273dc, #5aa1ff);
 }
 
 .mode-card .mode-badge {
@@ -183,24 +203,6 @@ main {
   box-shadow: 0 2px 6px rgba(31, 156, 95, 0.25);
 }
 
-.mode-card .mode-check {
-  position: absolute;
-  top: 0.85rem;
-  right: 0.85rem;
-  width: 1.85rem;
-  height: 1.85rem;
-  border-radius: 50%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: #e9eef7;
-  color: transparent;
-  border: 1px solid var(--cc-border);
-  transition: background-color 0.18s ease, color 0.18s ease,
-              border-color 0.18s ease, transform 0.18s ease;
-}
-.mode-card--primary .mode-check { display: none; }
-
 .mode-card-head {
   display: flex;
   align-items: center;
@@ -215,14 +217,12 @@ main {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: #eef3fb;
-  color: #3273dc;
+  background: #3273dc;
+  color: #fff;
   flex: 0 0 auto;
-  transition: background-color 0.18s ease, color 0.18s ease;
 }
 .mode-card .mode-icon .cc-icon {
-  width: 1.4rem;
-  height: 1.4rem;
+  font-size: 1.4rem;
 }
 .mode-card h3 { font-weight: 700; }
 .mode-card .mode-desc {
@@ -230,30 +230,6 @@ main {
   font-size: 0.92rem;
   line-height: 1.5;
   margin-bottom: 0;
-}
-
-.mode-card.is-selected,
-.mode-card:has(input:checked) {
-  border-color: #3273dc;
-  background: linear-gradient(180deg, #f6faff 0%, #ffffff 65%);
-  box-shadow: 0 8px 24px rgba(50, 115, 220, 0.18);
-  transform: translateY(-2px);
-}
-.mode-card.is-selected::before,
-.mode-card:has(input:checked)::before {
-  background: linear-gradient(90deg, #3273dc, #5aa1ff);
-}
-.mode-card.is-selected .mode-icon,
-.mode-card:has(input:checked) .mode-icon {
-  background: #3273dc;
-  color: #fff;
-}
-.mode-card.is-selected .mode-check,
-.mode-card:has(input:checked) .mode-check {
-  background: #3273dc;
-  border-color: #3273dc;
-  color: #fff;
-  transform: scale(1.05);
 }
 
 .mode-card .mode-time-control {
@@ -362,7 +338,6 @@ main {
   .mode-card { padding: 1.25rem; }
   .mode-card-head { padding-right: 0; }
   .mode-card .mode-badge { position: static; margin-bottom: 0.6rem; display: inline-flex; }
-  .mode-card .mode-check { top: 0.75rem; right: 0.75rem; }
 }
 
 /* ---------- qualidade ---------- */
@@ -463,12 +438,8 @@ main {
   min-width: 120px;
   padding: 0.55rem 0.45rem !important;
 }
-.grade-table thead th,
-.grade-table th[scope="row"],
 .grade-table .grade-day {
-  background-color: #f1f4fa;
   font-weight: 600;
-  color: #4a4a4a;
 }
 .grade-cell {
   font-size: 0.82rem;
@@ -554,42 +525,104 @@ main {
 .grade-cell[data-area="sistemas"]   { background-color: #f1f8e9; }
 .grade-cell[data-area="redes"]      { background-color: #fff8e1; }
 
-.area-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem 0.85rem;
-  font-size: 0.8rem;
-  margin: 0.5rem 0 1rem;
+.list-plain {
+  list-style: none;
+  padding-left: 0;
+  margin-bottom: 0;
 }
-.area-legend .swatch {
+.grade-log-pre {
+  max-height: 16rem;
+  overflow: auto;
+}
+.area-swatch {
   display: inline-block;
-  width: 0.9rem; height: 0.9rem;
+  width: 0.75rem;
+  height: 0.75rem;
   vertical-align: middle;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  border-radius: 3px;
-  margin-right: 0.25rem;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 2px;
+  margin-right: 0.35rem;
 }
+.area-swatch--exatas { background-color: #e3f2ff; }
+.area-swatch--humanas { background-color: #fff3e0; }
+.area-swatch--biologicas { background-color: #e8f5e9; }
+.area-swatch--linguagens { background-color: #fce4ec; }
+.area-swatch--geral { background-color: #f5f5f5; }
 
 /* ---------- disponibilidade do professor ---------- */
-.disp-grid input[type="checkbox"] {
-  width: 1.15rem; height: 1.15rem;
+.disp-grid td { padding: 0.25rem 0.4rem !important; }
+.disp-grid td.is-available { background-color: #e8f5e9; }
+.disp-grid td.is-unavailable { background-color: #ffe8eb; }
+.disp-grid td:not(.disp-day-actions) {
   cursor: pointer;
 }
-.disp-grid td { padding: 0.25rem 0.4rem !important; }
-.disp-grid td.is-unavailable { background-color: #ffe8eb; }
+.disp-grid .disp-toggle {
+  min-width: 2.5rem;
+  width: 100%;
+  font-weight: 600;
+}
 .disp-day-actions .button { font-size: 0.75rem; }
 
-/* ---------- toast feedback ---------- */
-.cc-feedback {
-  border-radius: 8px;
-  padding: 0.75rem 1rem;
-  font-weight: 500;
+/* ---------- lista de disciplinas (portal + admin) ---------- */
+.prof-disc-panel {
+  border: 1px solid var(--cc-border);
+  border-radius: 6px;
+  padding: 1rem;
+  background: #fafbfc;
+}
+.prof-disc-list {
+  border: 1px solid var(--cc-border);
+  border-radius: 4px;
+  background: #fff;
+}
+.prof-disc-item {
+  border-bottom: 1px solid var(--cc-border);
+  cursor: pointer;
+}
+.prof-disc-item:last-child { border-bottom: none; }
+.prof-disc-item:hover { background: #f7f9fc; }
+.tag.is-clickable { cursor: pointer; }
+.tag.is-clickable:hover { filter: brightness(0.96); }
+
+[data-disc-ensino-filters] .button.is-active {
+  border-color: #485fc7;
+  color: #3850b7;
+}
+
+#sec-grade,
+#sec-disponibilidade,
+#sec-disciplinas,
+#prof-disp-section {
+  scroll-margin-top: 1.5rem;
 }
 
 /* ---------- impressão (somente a tabela da grade) ---------- */
+/* ---------- geração de grade / barra de progresso ---------- */
+#progresso-bar.progress {
+  height: 1.25rem;
+  margin-bottom: 0.75rem;
+}
+
+#progresso-bar.progress.is-indeterminate {
+  animation: grade-progress-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes grade-progress-pulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+
+.grade-progress-frase {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #3e4c63;
+  min-height: 1.4em;
+  transition: opacity 0.25s ease;
+}
+
 @media print {
   body { background: #fff; }
-  .navbar, .footer, .level, .area-legend,
+  .navbar, .footer, .level, .tags,
   .no-print, button, details, .breadcrumb {
     display: none !important;
   }

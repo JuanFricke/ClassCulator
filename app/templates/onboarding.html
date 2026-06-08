@@ -1,15 +1,13 @@
 {% extends "base.html" %}
-{% from "_macros.html" import icon, step_indicator, context_help, readiness_card, page_header %}
+{% from "_macros.html" import icon, step_indicator, context_help, readiness_card, page_header, breadcrumb_nav %}
 
 {% block title %}Configuração guiada · ClassCulator{% endblock %}
 
 {% block content %}
-  <nav class="breadcrumb" aria-label="breadcrumbs">
-    <ul>
-      <li><a href="/">Painel</a></li>
-      <li class="is-active"><a href="#" aria-current="page">Configuração guiada</a></li>
-    </ul>
-  </nav>
+  {{ breadcrumb_nav([
+    {"href": "/", "label": "Painel"},
+    {"label": "Configuração guiada"},
+  ]) }}
 
   {{ page_header("Configuração guiada", "wand", "Siga as etapas abaixo para inserir os dados iniciais da escola.") }}
   {{ step_indicator(1) }}
