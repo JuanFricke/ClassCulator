@@ -46,9 +46,7 @@ Passe via campo `environment` em `VPS_createNewProjectV1`:
 APP_ENV=prod
 ACME_EMAIL=admin@sampletester.xyz
 SECRET_KEY=<gerar com secrets.token_urlsafe(32)>
-EMPRESA_NOME=Administração
-EMPRESA_EMAIL=empresa@sampletester.xyz
-EMPRESA_SENHA=<senha forte>
+ADMIN_SETUP_ENABLED=false
 POSTGRES_USER=classculator
 POSTGRES_PASSWORD=<senha forte>
 POSTGRES_DB=classculator
@@ -112,9 +110,6 @@ curl -s -X POST \
       "POSTGRES_PASSWORD": "...",
       "DATABASE_URL": "postgresql+asyncpg://classculator:...@db:5432/classculator",
       "SYNC_DATABASE_URL": "postgresql+psycopg://classculator:...@db:5432/classculator",
-      "EMPRESA_EMAIL": "empresa@sampletester.xyz",
-      "EMPRESA_SENHA": "...",
-      "EMPRESA_NOME": "Administração",
       "ACME_EMAIL": "admin@sampletester.xyz"
     }
   }'
@@ -131,7 +126,15 @@ curl -s -H "Authorization: Bearer $HOSTINGER_API_TOKEN" \
 curl -s https://classculator.sampletester.xyz/health
 ```
 
-Login empresa: `/login` com `EMPRESA_EMAIL` / `EMPRESA_SENHA`.
+## Primeiro acesso (conta administradora)
+
+Após o deploy, abra `/login` e clique em **Criar conta administradora** (ou acesse `/registro/administradora`).
+
+O cadastro fica disponível enquanto existir apenas a conta temporária criada pela migration (`empresa@classculator.local`). Ao registrar, essa conta é substituída pela sua.
+
+Se já existir uma conta administradora definitiva e você precisar recriá-la, defina temporariamente `ADMIN_SETUP_ENABLED=true` no ambiente do Docker Project, faça o cadastro e volte a `false`.
+
+Professores continuam entrando via convite (`/convite/{token}`), não pelo cadastro administradora.
 
 ## Atualizar após mudanças no código
 
