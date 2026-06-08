@@ -72,14 +72,21 @@ services:
 
   caddy:
     image: caddy:2-alpine
-    container_name: classculator-caddy
     depends_on:
       - app
+    environment:
+      ACME_AGREE: "true"
+    command:
+      - caddy
+      - reverse-proxy
+      - --from
+      - classculator.sampletester.xyz
+      - --to
+      - app:8000
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
     restart: unless-stopped
