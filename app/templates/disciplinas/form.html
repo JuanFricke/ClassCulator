@@ -1,18 +1,14 @@
 {% extends "base.html" %}
-{% from "_macros.html" import icon, page_header, step_indicator, context_help %}
+{% from "_macros.html" import icon, page_header, step_indicator, context_help, ensino_select, crud_form_actions, breadcrumb_nav %}
 
 {% block title %}{{ disciplina.nome if disciplina else "Nova disciplina" }} · ClassCulator{% endblock %}
 
 {% block content %}
-  <nav class="breadcrumb" aria-label="breadcrumbs">
-    <ul>
-      <li><a href="/">Painel</a></li>
-      <li><a href="/disciplinas">Disciplinas</a></li>
-      <li class="is-active"><a href="#" aria-current="page">
-        {{ disciplina.nome if disciplina else "Nova disciplina" }}
-      </a></li>
-    </ul>
-  </nav>
+  {{ breadcrumb_nav([
+    {"href": "/", "label": "Painel"},
+    {"href": "/disciplinas", "label": "Disciplinas"},
+    {"label": disciplina.nome if disciplina else "Nova disciplina"},
+  ]) }}
 
   {{ page_header(disciplina.nome if disciplina else "Nova disciplina", "book") }}
   {{ step_indicator(2) }}
@@ -21,7 +17,7 @@
   <form
     id="disciplina-form"
     data-id="{{ disciplina.id if disciplina else '' }}"
-    class="cc-card"
+    class="box"
   >
     <div class="field">
       <label class="label" for="disciplina-nome">Nome da disciplina</label>
@@ -34,22 +30,8 @@
     <div class="field">
       <label class="label" for="disciplina-ensino">Nível de ensino</label>
       <div class="control">
-        <div class="select is-fullwidth">
-          {% set ensino_atual = disciplina.ensino if disciplina else "ambos" %}
-          <select id="disciplina-ensino" name="ensino">
-            {% for ensino in ensino_options %}
-              <option value="{{ ensino }}" {% if ensino == ensino_atual %}selected{% endif %}>
-                {% if ensino == "fundamental" %}
-                  Ensino Fundamental
-                {% elif ensino == "medio" %}
-                  Ensino Médio
-                {% else %}
-                  Ambos
-                {% endif %}
-              </option>
-            {% endfor %}
-          </select>
-        </div>
+        {% set ensino_atual = disciplina.ensino if disciplina else "ambos" %}
+        {{ ensino_select("disciplina-ensino", "ensino", ensino_atual, ensino_options) }}
       </div>
       <p class="help has-text-grey">Use esta tag para separar corretamente disciplinas por nível.</p>
     </div>
@@ -103,19 +85,7 @@
       </div>
     </div>
 
-    <div class="field is-grouped">
-      <div class="control">
-        <button class="button is-link" type="submit">
-          {{ icon("check", "mr-1") }} Salvar
-        </button>
-      </div>
-      <div class="control">
-        <a class="button is-link is-light" href="/professores/novo">Próxima etapa: Professores</a>
-      </div>
-      <div class="control">
-        <a class="button" href="/disciplinas">Voltar</a>
-      </div>
-    </div>
+    {{ crud_form_actions("Salvar", "/professores/novo", "Próxima etapa: Professores", "/disciplinas") }}
     <div class="notification is-hidden" id="disciplina-feedback"></div>
   </form>
 {% endblock %}

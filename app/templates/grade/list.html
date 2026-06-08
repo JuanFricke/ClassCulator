@@ -1,20 +1,15 @@
 {% extends "base.html" %}
-{% from "_macros.html" import icon, status_tag, solver_label, quality, page_header, empty_state %}
+{% from "_macros.html" import icon, status_tag, solver_label, quality, page_header, empty_state, breadcrumb_nav %}
 
 {% block title %}Grades · ClassCulator{% endblock %}
 
 {% block content %}
-  <nav class="breadcrumb" aria-label="breadcrumbs">
-    <ul>
-      <li><a href="/">Painel</a></li>
-      <li class="is-active"><a href="#" aria-current="page">Grades geradas</a></li>
-    </ul>
-  </nav>
+  {{ breadcrumb_nav([
+    {"href": "/", "label": "Painel"},
+    {"label": "Grades geradas"},
+  ]) }}
 
-  {{ page_header("Grades geradas", "calendar", "Histórico de execuções e qualidade das grades.", "/grade/nova", "Gerar nova grade", "play") }}
-  <div class="notification is-light">
-    Use este histórico para comparar versões e abrir rapidamente a grade mais recente.
-  </div>
+  {{ page_header("Grades geradas", "calendar", "Histórico de execuções e qualidade das grades. Use para comparar versões e abrir a mais recente.", "/grade/nova", "Gerar nova grade", "play") }}
 
   {% if grades %}
     <div class="box p-0">

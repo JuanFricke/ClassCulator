@@ -1,16 +1,14 @@
 {% extends "base.html" %}
-{% from "_macros.html" import icon, readiness_row, page_header, step_indicator, context_help %}
+{% from "_macros.html" import icon, readiness_row, page_header, step_indicator, context_help, breadcrumb_nav %}
 
 {% block title %}Gerar grade · ClassCulator{% endblock %}
 
 {% block content %}
-  <nav class="breadcrumb" aria-label="breadcrumbs">
-    <ul>
-      <li><a href="/">Painel</a></li>
-      <li><a href="/grade">Grades</a></li>
-      <li class="is-active"><a href="#" aria-current="page">Nova geração</a></li>
-    </ul>
-  </nav>
+  {{ breadcrumb_nav([
+    {"href": "/", "label": "Painel"},
+    {"href": "/grade", "label": "Grades"},
+    {"label": "Nova geração"},
+  ]) }}
 
   {{ page_header("Gerar uma nova grade", "play", "O cálculo roda em segundo plano e redireciona automaticamente ao concluir.") }}
   {{ step_indicator(5) }}
@@ -30,107 +28,94 @@
     </article>
   {% endif %}
 
-  <form id="gerar-form" class="cc-card">
-    <div class="field mt-4">
+  <form id="gerar-form" class="box">
+    <div class="field">
       <label class="label">Como gerar?</label>
-      <div class="columns is-variable is-4">
-        <div class="column is-6">
-          <label class="mode-card mode-card--primary">
-            <input type="radio" name="solver" value="cpsat" checked />
-            <span class="mode-badge">
-              {{ icon("star", "mr-1") }} Recomendado
-            </span>
-            <span class="mode-check" aria-hidden="true">
-              {{ icon("check") }}
-            </span>
-            <div class="mode-card-head">
-              <span class="mode-icon">{{ icon("wand") }}</span>
-              <h3 class="title is-5 mb-0">Modo otimizado</h3>
-            </div>
-            <p class="mode-desc">
-              Procura a melhor combinação possível dentro do tempo limite,
-              gerando grades com menos janelas vazias e mais agrupamentos.
-            </p>
-            <div class="mode-time-control">
-              <div class="mode-time-header">
-                <strong>Tempo de busca</strong>
-                <span id="timeout-value" class="tag is-link is-light is-medium has-text-weight-semibold">1,0 min</span>
-              </div>
-              <div class="mode-slider">
-                <input
-                  id="grade-timeout-slider"
-                  class="mode-slider-input"
-                  type="range"
-                  min="1"
-                  max="20"
-                  step="1"
-                  value="1"
-                  list="grade-timeout-ticks"
-                  oninput="window.syncTimeoutFromSlider && window.syncTimeoutFromSlider()"
-                />
-                <div class="mode-slider-ticks" aria-hidden="true">
-                  {% for i in range(20) %}
-                    <span class="mode-slider-tick {% if i % 5 == 0 or i == 19 %}is-major{% endif %}"></span>
-                  {% endfor %}
-                </div>
-                <datalist id="grade-timeout-ticks">
-                  {% for i in range(1, 21) %}<option value="{{ i }}"></option>{% endfor %}
-                </datalist>
-              </div>
-              <div class="mode-time-labels">
-                <span>1 min</span>
-                <span>10 min</span>
-              </div>
-            </div>
-          </label>
+      <div class="mode-card">
+        <span class="mode-badge">
+          {{ icon("star", "mr-1") }} Recomendado
+        </span>
+        <div class="mode-card-head">
+          <span class="mode-icon">{{ icon("wand") }}</span>
+          <h3 class="title is-5 mb-0">Modo otimizado</h3>
         </div>
-        <div class="column is-6">
-          <label class="mode-card mode-card--secondary">
-            <input type="radio" name="solver" value="classic" />
-            <span class="mode-check" aria-hidden="true">
-              {{ icon("check") }}
-            </span>
-            <div class="mode-card-head">
-              <span class="mode-icon">{{ icon("play") }}</span>
-              <h3 class="title is-5 mb-0">Modo checagem</h3>
+        <p class="mode-desc">
+          Procura a melhor combinação possível dentro do tempo limite,
+          gerando grades com menos janelas vazias e mais agrupamentos.
+        </p>
+        <div class="mode-time-control">
+          <div class="mode-time-header">
+            <strong>Tempo de busca</strong>
+            <span id="timeout-value" class="tag is-link is-light is-medium has-text-weight-semibold">1,0 min</span>
+          </div>
+          <div class="mode-slider">
+            <input
+              id="grade-timeout-slider"
+              class="mode-slider-input"
+              type="range"
+              min="1"
+              max="20"
+              step="1"
+              value="1"
+              list="grade-timeout-ticks"
+              oninput="window.syncTimeoutFromSlider && window.syncTimeoutFromSlider()"
+            />
+            <div class="mode-slider-ticks" aria-hidden="true">
+              {% for i in range(20) %}
+                <span class="mode-slider-tick {% if i % 5 == 0 or i == 19 %}is-major{% endif %}"></span>
+              {% endfor %}
             </div>
-            <p class="mode-desc">
-              Roda sem limite de tempo at&eacute; encontrar a primeira op&ccedil;&atilde;o
-              vi&aacute;vel. Ideal para validar se a configura&ccedil;&atilde;o fecha.
-            </p>
-          </label>
+            <datalist id="grade-timeout-ticks">
+              {% for i in range(1, 21) %}<option value="{{ i }}"></option>{% endfor %}
+            </datalist>
+          </div>
+          <div class="mode-time-labels">
+            <span>1 min</span>
+            <span>10 min</span>
+          </div>
         </div>
       </div>
     </div>
+    <input type="hidden" name="solver" id="grade-solver" value="cpsat" />
     <input type="hidden" name="timeout_s" id="grade-timeout" value="60" />
 
-    {% if not readiness.tudo_pronto %}
-      <article class="notification is-warning is-light">
-        Conclua os itens pendentes acima para liberar o botão de geração.
-      </article>
-    {% endif %}
-
-    <div class="field is-grouped mt-5">
+    <div class="field is-grouped is-grouped-multiline mt-5">
       <div class="control">
         <button class="button is-link is-medium" type="submit" id="btn-gerar" {% if not readiness.tudo_pronto %}disabled{% endif %}>
           {{ icon("play", "mr-1") }} Gerar agora
         </button>
       </div>
       <div class="control">
+        <button
+          type="button"
+          class="button is-light is-medium"
+          id="btn-checar"
+          {% if not readiness.tudo_pronto %}disabled{% endif %}
+          title="Usa o modo checagem, sem limite de tempo, até achar a primeira combinação viável"
+        >
+          {{ icon("check", "mr-1") }} Só checar viabilidade
+        </button>
+      </div>
+      <div class="control">
         <a class="button is-medium" href="/grade">Cancelar</a>
       </div>
     </div>
+    <p class="help mt-2">
+      <strong>Gerar agora</strong> otimiza a grade pelo tempo escolhido acima.
+      <strong>Só checar viabilidade</strong> confirma se existe alguma solução possível, sem otimizar.
+    </p>
   </form>
 
   <article id="progresso" class="notification is-info is-light is-hidden mt-4">
-    <p class="title is-6 mt-0">
-      {{ icon("play", "mr-1") }} Gerando sua grade…
+    <p class="title is-6 mt-0" id="progresso-titulo">
+      {{ icon("play", "mr-1") }}<span id="progresso-titulo-text">Gerando sua grade…</span>
     </p>
-    <progress class="progress is-info" max="100"></progress>
-    <p id="progresso-msg">Enfileirando tarefa…</p>
+    <progress id="progresso-bar" class="progress is-primary" max="100" value="0"></progress>
+    <p id="progresso-frase" class="grade-progress-frase" aria-live="polite"></p>
+    <p id="progresso-msg" class="is-hidden" aria-live="assertive"></p>
   </article>
 {% endblock %}
 
 {% block scripts %}
-  <script src="/static/js/grade-poll.js?v=4" defer></script>
+  <script src="/static/js/grade-poll.js?v=7" defer></script>
 {% endblock %}

@@ -316,6 +316,9 @@
   }
 
   // --- Alternância do modo de edição -------------------------------------- //
+  const toggleLabel = toggle.querySelector("[data-edit-toggle-label]");
+  const toggleLabelDefault = toggleLabel?.textContent.trim() ?? "Editar manualmente";
+
   function enterEditMode() {
     editing = true;
     document.body.classList.add("grade-editing");
@@ -323,6 +326,7 @@
     toggle.setAttribute("aria-pressed", "true");
     toggle.classList.add("is-warning");
     toggle.classList.remove("is-light");
+    if (toggleLabel) toggleLabel.textContent = "Sair da edição";
     if (orientationToggle) orientationToggle.disabled = true;
     editableCells().forEach((td) => {
       if (isFilled(td)) td.setAttribute("draggable", "true");
@@ -340,6 +344,11 @@
     } else {
       enterEditMode();
     }
+  });
+
+  // Restaura rótulo caso a página seja restaurada do bfcache sem recarregar.
+  window.addEventListener("pageshow", () => {
+    if (!editing && toggleLabel) toggleLabel.textContent = toggleLabelDefault;
   });
 
   cancelBtn?.addEventListener("click", exitEditMode);

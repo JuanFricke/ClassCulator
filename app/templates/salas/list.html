@@ -1,17 +1,15 @@
 {% extends "base.html" %}
-{% from "_macros.html" import icon, page_header, empty_state %}
+{% from "_macros.html" import icon, page_header, empty_state, breadcrumb_nav %}
 
 {% block title %}Salas · ClassCulator{% endblock %}
 
 {% block content %}
-  <nav class="breadcrumb" aria-label="breadcrumbs">
-    <ul>
-      <li><a href="/">Painel</a></li>
-      <li class="is-active"><a href="#" aria-current="page">Salas</a></li>
-    </ul>
-  </nav>
+  {{ breadcrumb_nav([
+    {"href": "/", "label": "Painel"},
+    {"label": "Salas"},
+  ]) }}
 
-  {{ page_header("Salas e laboratórios", "door", "Controle capacidade e tipo de ambiente.", "/salas/novo", "Novo ambiente") }}
+  {{ page_header("Salas e laboratórios", "door", "Controle capacidade e tipo de ambiente.", "/salas/novo", "Nova sala") }}
   <div class="notification is-light">
     Garanta que laboratórios estejam cadastrados para disciplinas práticas.
   </div>
@@ -34,7 +32,7 @@
                 <td><a href="/salas/{{ s.id }}"><strong>{{ s.nome }}</strong></a></td>
                 <td>
                   {% if s.tipo.value == 'lab' %}
-                    <span class="tag is-warning">Laboratório</span>
+                    <span class="tag is-warning is-light">Laboratório</span>
                   {% else %}
                     <span class="tag is-light">Sala comum</span>
                   {% endif %}
