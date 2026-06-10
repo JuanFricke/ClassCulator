@@ -49,5 +49,5 @@ class TurmaDisciplina(Base):
         ForeignKey("disciplinas.id", ondelete="CASCADE"), nullable=False, index=True
     )
     professor_id: Mapped[int | None] = mapped_column(
-        ForeignKey("professores.id", ondelete="RESTRICT"), nullable=True, index=True
+        ForeignKey("professores.id", ondelete="SET NULL"), nullable=True, index=True
     )
