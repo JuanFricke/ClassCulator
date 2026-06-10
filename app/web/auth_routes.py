@@ -253,6 +253,24 @@ async def anos_criar(
     return RedirectResponse("/", status_code=303)
 
 
+@router.post("/anos/excluir")
+async def anos_excluir(
+    request: Request,
+    session: SessionDep,
+    user: EmpresaWebDep,
+    ano_id: int = Form(...),
+):
+    ano = await session.get(AnoLetivo, ano_id)
+    if ano is None:
+        raise HTTPException(status_code=404, detail="Ano letivo não encontrado")
+    # If the deleted year is the one selected in session, clear it
+    if request.session.get(SESSION_ANO_KEY) == ano.id:
+        request.session.pop(SESSION_ANO_KEY, None)
+    await session.delete(ano)
+    await session.commit()
+    return RedirectResponse("/anos", status_code=303)
+
+
 # --- Convites de professores --------------------------------------------- #
 
 

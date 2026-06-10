@@ -41,6 +41,10 @@
                   {{ icon("check", "mr-1") }} {% if a.id == ano_atual_id %}Entrar{% else %}Selecionar e entrar{% endif %}
                 </button>
               </form>
+              <form method="post" action="/anos/excluir" class="is-inline" onsubmit="return confirm('Excluir o ano letivo {{ a.ano }} e todos os dados associados? Esta ação é irreversível.')">
+                <input type="hidden" name="ano_id" value="{{ a.id }}" />
+                <button type="submit" class="button is-small is-danger is-light">Excluir</button>
+              </form>
             </td>
           </tr>
           {% endfor %}
