@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
-from sqlalchemy import delete, select, func
+from sqlalchemy import delete, select
 
 from app.core.auth import (
     SESSION_ANO_KEY,
@@ -263,37 +263,6 @@ async def anos_excluir(
     ano = await session.get(AnoLetivo, ano_id)
     if ano is None:
         raise HTTPException(status_code=404, detail="Ano letivo não encontrado")
-
-    # Check for dependent records that would block deletion
-    refs = []
-    turma_count = (await session.execute(select(func.count()).select_from(Turma).where(Turma.ano_letivo_id == ano.id))).scalar_one()
-    if turma_count:
-        refs.append(f"{turma_count} turma(s)")
-    prof_count = (await session.execute(select(func.count()).select_from(Professor).where(Professor.ano_letivo_id == ano.id))).scalar_one()
-    if prof_count:
-        refs.append(f"{prof_count} professor(es)")
-    disc_count = (await session.execute(select(func.count()).select_from(Disciplina).where(Disciplina.ano_letivo_id == ano.id))).scalar_one()
-    if disc_count:
-        refs.append(f"{disc_count} disciplina(s)")
-    sala_count = (await session.execute(select(func.count()).select_from(Sala).where(Sala.ano_letivo_id == ano.id))).scalar_one()
-    if sala_count:
-        refs.append(f"{sala_count} sala(s)")
-    grade_count = (await session.execute(select(func.count()).select_from(GradeHoraria).where(GradeHoraria.ano_letivo_id == ano.id))).scalar_one()
-    if grade_count:
-        refs.append(f"{grade_count} grade(s)")
-
-    if refs:
-        anos = (await session.execute(select(AnoLetivo).order_by(AnoLetivo.ano.desc()))).scalars().all()
-        return render(
-            request,
-            "anos/list.html",
-            active="anos",
-            current_user=user,
-            anos=anos,
-            ano_atual_id=request.session.get(SESSION_ANO_KEY),
-            sugestao_ano=(max(a.ano for a in anos) + 1) if anos else 2026,
-            erro=("Não é possível excluir o ano porque existem registros relacionados: " + ", ".join(refs)),
-        )
 
     # If the deleted year is the one selected in session, clear it
     if request.session.get(SESSION_ANO_KEY) == ano.id:

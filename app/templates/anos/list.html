@@ -41,7 +41,15 @@
                   {{ icon("check", "mr-1") }} {% if a.id == ano_atual_id %}Entrar{% else %}Selecionar e entrar{% endif %}
                 </button>
               </form>
-              <form method="post" action="/anos/excluir" class="is-inline" onsubmit="return confirm('Excluir o ano letivo {{ a.ano }} e todos os dados associados? Esta ação é irreversível.')">
+              <form
+                method="post"
+                action="/anos/excluir"
+                class="is-inline"
+                onsubmit="
+                  if (!confirm('Excluir o ano letivo {{ a.ano }}? Esta ação é irreversível.')) return false;
+                  return confirm('Confirma que deseja remover também todos os dados relacionados (professores, matérias/disciplinas, turmas, salas e grades) do ano {{ a.ano }}?');
+                "
+              >
                 <input type="hidden" name="ano_id" value="{{ a.id }}" />
                 <button type="submit" class="button is-small is-danger is-light">Excluir</button>
               </form>
